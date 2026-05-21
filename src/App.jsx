@@ -953,8 +953,10 @@ function App() {
 
             {!['home', 'result'].includes(view) && (
                 <div className="game-screen flex-1 flex flex-col">
-                    <div className="game-topbar h-14 px-4 flex-shrink-0 flex justify-between items-center bg-white border-b border-slate-100">
-                        <button onClick={() => { clearAnswerFeedback(); setView('home'); }} className="p-2 text-slate-400"><Icon name="chevron-left" /></button>
+                    <div className="game-topbar h-14 px-4 flex-shrink-0 grid grid-cols-[1fr_auto_1fr] items-center bg-white border-b border-slate-100">
+                        <div className="flex justify-start">
+                            <button onClick={() => { clearAnswerFeedback(); setView('home'); }} className="p-2 text-slate-400"><Icon name="chevron-left" /></button>
+                        </div>
                         <div className="text-center">
                             <div className="text-[9px] font-black text-indigo-500 brand-text">{mode === 'comp' ? ui.arenaMode : ui.training}</div>
                             <div className="text-sm font-bold">{mode === 'comp' ? ui.arenaShortTitle : getTaskTitle(view)}</div>
@@ -962,7 +964,7 @@ function App() {
                                 <div className="text-[9px] font-black text-slate-400 font-mono">{ui.taskBest} {history.taskBestScores?.[view] || 0}</div>
                             )}
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-end gap-3">
                             <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${isError ? 'bg-red-500 text-white' : 'bg-slate-100'}`}>{timeLeft}s</div>
                             <div className="font-mono text-xl font-black text-indigo-600">{score}</div>
                         </div>
