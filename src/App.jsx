@@ -927,6 +927,11 @@ function App() {
     }, [isEnglish]);
 
     useEffect(() => {
+        document.body.classList.toggle('is-app-scrollable', !isGameView);
+        return () => document.body.classList.remove('is-app-scrollable');
+    }, [isGameView]);
+
+    useEffect(() => {
         recordRetention('session_start', {
             sessionId: sessionIdRef.current,
             source: document.referrer ? 'referral' : 'direct'
@@ -1602,7 +1607,7 @@ function App() {
     }, [timeLeft, view, isInfiniteMode]);
 
     return (
-        <div className={`app-shell h-full flex flex-col relative overflow-hidden transition-colors duration-200 ${isError ? 'arena-flash' : 'bg-slate-50'} text-slate-900 select-none`}>
+        <div className={`app-shell h-full flex flex-col relative ${isGameView ? 'overflow-hidden' : 'overflow-y-auto'} transition-colors duration-200 ${isError ? 'arena-flash' : 'bg-slate-50'} text-slate-900 select-none`}>
 
             {answerFeedback && (
                 <div

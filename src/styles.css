@@ -15,15 +15,36 @@ body {
     height: 100%;
 }
 
+body.is-app-scrollable {
+    overflow-x: hidden;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+}
+
 #root {
     height: 100vh;
     height: 100dvh;
     width: 100vw;
 }
 
+body.is-app-scrollable #root {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
 .app-shell {
     min-height: 100vh;
     min-height: 100dvh;
+}
+
+body.is-app-scrollable .app-shell {
+    height: auto !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible !important;
 }
 
 .app-nav {
@@ -1409,11 +1430,11 @@ body {
 
 @media (max-width: 560px) {
     .home-screen.app-content-screen {
-        height: 100dvh;
-        min-height: 0;
+        height: auto !important;
+        min-height: 100dvh;
         padding-bottom: var(--mobile-nav-clearance) !important;
         overflow-x: hidden !important;
-        overflow-y: scroll !important;
+        overflow-y: visible !important;
         overscroll-behavior-y: contain;
         touch-action: pan-y;
         -webkit-overflow-scrolling: touch;
@@ -1422,6 +1443,7 @@ body {
     .home-screen.app-content-screen .task-section {
         margin-bottom: 0 !important;
     }
+
 }
 
 @media (min-width: 900px) {
