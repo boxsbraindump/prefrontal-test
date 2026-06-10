@@ -264,9 +264,20 @@ const SEO_TITLE = {
 };
 
 const getInitialLanguage = () => {
-    const stored = localStorage.getItem('prefrontal_lab_lang');
-    if (stored === 'zh' || stored === 'en') return stored;
-    return 'en';
+    try {
+        const stored = localStorage.getItem('prefrontal_lab_lang');
+        if (stored === 'zh' || stored === 'en') return stored;
+    } catch (error) {
+        // Language detection still works when browser storage is unavailable.
+    }
+
+    const browserLanguages = navigator.languages?.length
+        ? navigator.languages
+        : [navigator.language || ''];
+
+    return browserLanguages.some(language => language.toLowerCase().startsWith('zh'))
+        ? 'zh'
+        : 'en';
 };
 
 const DAILY_CHALLENGES = [
@@ -708,9 +719,14 @@ function App() {
         };
 
     const setLanguage = (nextLang) => {
-        localStorage.setItem('prefrontal_lab_lang', nextLang);
         setLang(nextLang);
         setShowSettings(false);
+
+        try {
+            localStorage.setItem('prefrontal_lab_lang', nextLang);
+        } catch (error) {
+            // Keep the current session usable even if storage is blocked.
+        }
     };
 
     const refreshRetention = () => setRetentionData(readRetentionData());
@@ -888,7 +904,7 @@ function App() {
                 <Icon name="settings" className="w-5 h-5" />
             </button>
             {showSettings && (
-                <div className="settings-menu">
+                <div className="settings-menu" role="dialog" aria-label={ui.settings}>
                     <div className="settings-menu-title">
                         <Icon name="settings" className="w-4 h-4" />
                         <span>{ui.settings}</span>
@@ -905,6 +921,7 @@ function App() {
                                     type="button"
                                     onClick={() => setLanguage(option.key)}
                                     className={`settings-language-option ${lang === option.key ? 'is-active' : ''}`}
+                                    aria-pressed={lang === option.key}
                                 >
                                     {option.label}
                                 </button>
