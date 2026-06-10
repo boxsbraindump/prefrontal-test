@@ -66,7 +66,6 @@ const UI_TEXT = {
         dailyStart: "开始今日挑战",
         dailyCheckIn: "今日打卡",
         dailyWeek: "本周",
-        dailyCompleted: "总打卡",
         dailyGoal: "60 秒限时挑战",
         dailyGoalFinish: "完成目标",
         dailyGoalTimed: "限时挑战",
@@ -127,7 +126,6 @@ const UI_TEXT = {
         dailyStart: "Start Daily",
         dailyCheckIn: "Check in",
         dailyWeek: "This Week",
-        dailyCompleted: "Total",
         dailyGoal: "60-second challenge",
         dailyGoalFinish: "Goal clear",
         dailyGoalTimed: "Timed run",
@@ -657,7 +655,6 @@ function App() {
     const dailyRecord = dailyProgress.days?.[dailySpec.day] || {};
     const dailyStreak = getDailyStreak(dailyProgress.days, dailySpec.day);
     const dailyWeekDays = getWeeklyDailyDays(dailyProgress.days, dailySpec.day);
-    const dailyCompletedCount = Object.values(dailyProgress.days || {}).filter(day => day?.completed).length;
     const dailyTheme = dailySpec.theme?.[lang] || dailySpec.theme?.en;
     const dailyRuleLabel = dailySpec.ruleLabel?.[lang] || (dailySpec.completion === 'finish-grid' ? ui.dailyGoalFinish : ui.dailyGoalTimed);
     const dailyDurationLabel = `${dailySpec.duration || 60}s`;
@@ -1784,14 +1781,6 @@ function App() {
                                     </div>
                                 </div>
                                 <div className="p-5">
-                                    <div className="daily-total-row">
-                                        <div className="daily-total-icon">
-                                            <Icon name="badge-check" className="w-4 h-4" />
-                                        </div>
-                                        <span>{ui.dailyCompleted}</span>
-                                        <strong>{dailyCompletedCount}</strong>
-                                    </div>
-
                                     <div className="daily-goal-box">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
