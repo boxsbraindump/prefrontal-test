@@ -1409,10 +1409,13 @@ body {
 
 @media (max-width: 560px) {
     .home-screen.app-content-screen {
+        height: 100dvh;
+        min-height: 0;
         padding-bottom: var(--mobile-nav-clearance) !important;
         overflow-x: hidden !important;
-        overflow-y: auto !important;
+        overflow-y: scroll !important;
         overscroll-behavior-y: contain;
+        touch-action: pan-y;
         -webkit-overflow-scrolling: touch;
     }
 
