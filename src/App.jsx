@@ -248,6 +248,13 @@ const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
 const OWNER_TOKEN_KEY = 'prefrontal_lab_owner_token';
 const DAILY_STORAGE_KEY = 'prefrontal_lab_daily_v4';
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || '/api/retention';
+const TEST_PROBE_ID = 'LANG-PROBE-20260610-G';
+const isTestProbeEnabled = () => {
+    const params = new URLSearchParams(window.location.search);
+    const isTestSite = window.location.hostname === 'boxsbraindump.github.io'
+        && window.location.pathname.startsWith('/prefrontal-test');
+    return isTestSite || params.get('testProbe') === '1';
+};
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
     arena: 'Cognitive Arena',
@@ -639,6 +646,7 @@ function App() {
     const [cloudStatus, setCloudStatus] = useState('idle');
     const [ownerToken, setOwnerToken] = useState(() => localStorage.getItem(OWNER_TOKEN_KEY) || '');
     const [showSettings, setShowSettings] = useState(false);
+    const [showTestProbe, setShowTestProbe] = useState(() => isTestProbeEnabled());
     const ui = UI_TEXT[lang];
     const isEnglish = lang === 'en';
     const isGameView = !['home', 'result', 'analytics'].includes(view);
@@ -845,6 +853,7 @@ function App() {
     // ✨ 在这里插入：更新公告状态管理
     // ==========================================
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
+        if (isTestProbeEnabled()) return false;
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
         return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.2_update');
@@ -2041,6 +2050,62 @@ function App() {
             )}
 
             {/* 更新说明弹窗 */}
+            {showTestProbe && view !== 'analytics' && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-5 bg-slate-900/55 backdrop-blur-md">
+                    <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl animate-pop-center">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                <Icon name="badge-check" className="h-6 w-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-black text-slate-900">测试版本已加载</h2>
+                                <p className="mt-1 font-mono text-[10px] font-bold text-emerald-600">{TEST_PROBE_ID}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold text-slate-600">
+                            <div className="flex items-center justify-between gap-4">
+                                <span>当前应用语言</span>
+                                <strong className="text-slate-900">{lang === 'zh' ? '中文' : 'English'}</strong>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-4">
+                                <span>手机浏览器语言</span>
+                                <strong className="max-w-[55%] truncate text-slate-900">{navigator.language || 'Unknown'}</strong>
+                            </div>
+                        </div>
+
+                        <p className="mt-4 text-xs font-medium leading-relaxed text-slate-500">
+                            看到此弹窗代表手机已经加载最新版。请在这里测试语言按钮，再测试右上角设置按钮。
+                        </p>
+
+                        <div className="mt-5 grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setLanguage('zh')}
+                                className={`h-11 rounded-xl border text-sm font-black ${lang === 'zh' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
+                            >
+                                中文
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setLanguage('en')}
+                                className={`h-11 rounded-xl border text-sm font-black ${lang === 'en' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
+                            >
+                                English
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowTestProbe(false)}
+                            className="mt-3 h-11 w-full rounded-xl bg-slate-900 text-sm font-black text-white"
+                        >
+                            关闭并测试设置按钮
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {showUpdateNote && view !== 'analytics' && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/60 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-pop-center relative overflow-hidden">
