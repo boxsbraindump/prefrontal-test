@@ -912,38 +912,39 @@ function App() {
             >
                 <Icon name="settings" className="w-5 h-5" />
             </button>
-            {showSettings && (
-                <div className="settings-menu" role="dialog" aria-label={ui.settings}>
-                    <div className="settings-menu-title">
-                        <Icon name="settings" className="w-4 h-4" />
-                        <span>{ui.settings}</span>
-                    </div>
-                    <div className="settings-menu-section">
-                        <div className="settings-row-label">{ui.settingsLanguage}</div>
-                        <div className="settings-language-group">
-                            {[
-                                { key: 'zh', label: '中文' },
-                                { key: 'en', label: 'EN' }
-                            ].map(option => (
-                                <button
-                                    key={option.key}
-                                    type="button"
-                                    onClick={() => setLanguage(option.key)}
-                                    className={`settings-language-option ${lang === option.key ? 'is-active' : ''}`}
-                                    aria-pressed={lang === option.key}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="settings-sync-row">
-                        <Icon name="cloud" className="w-4 h-4" />
-                        <span>{ui.settingsData}</span>
-                        <strong>{ui.settingsSoon}</strong>
-                    </div>
+        </div>
+    );
+
+    const renderSettingsPanel = () => (
+        <div className="settings-menu settings-panel" role="dialog" aria-label={ui.settings}>
+            <div className="settings-menu-title">
+                <Icon name="settings" className="w-4 h-4" />
+                <span>{ui.settings}</span>
+            </div>
+            <div className="settings-menu-section">
+                <div className="settings-row-label">{ui.settingsLanguage}</div>
+                <div className="settings-language-group">
+                    {[
+                        { key: 'zh', label: '中文' },
+                        { key: 'en', label: 'EN' }
+                    ].map(option => (
+                        <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => setLanguage(option.key)}
+                            className={`settings-language-option ${lang === option.key ? 'is-active' : ''}`}
+                            aria-pressed={lang === option.key}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
                 </div>
-            )}
+            </div>
+            <div className="settings-sync-row">
+                <Icon name="cloud" className="w-4 h-4" />
+                <span>{ui.settingsData}</span>
+                <strong>{ui.settingsSoon}</strong>
+            </div>
         </div>
     );
 
@@ -1648,12 +1649,15 @@ function App() {
             )}
 
             {showSettings && (
-                <button
-                    type="button"
-                    className="settings-scrim"
-                    aria-label="Close settings"
-                    onClick={() => setShowSettings(false)}
-                />
+                <>
+                    <button
+                        type="button"
+                        className="settings-scrim"
+                        aria-label="Close settings"
+                        onClick={() => setShowSettings(false)}
+                    />
+                    {renderSettingsPanel()}
+                </>
             )}
 
             {(view === 'home' || view === 'analytics') && (

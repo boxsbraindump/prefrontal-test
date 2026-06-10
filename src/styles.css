@@ -72,7 +72,7 @@ body.is-app-scrollable .app-shell {
 .settings-scrim {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 80;
     border: 0;
     background: transparent;
 }
@@ -113,6 +113,13 @@ body.is-app-scrollable .app-shell {
     padding: 12px;
     z-index: 2;
     pointer-events: auto;
+}
+
+.settings-panel {
+    position: fixed;
+    top: 66px;
+    right: 20px;
+    z-index: 90;
 }
 
 .settings-menu-title,
@@ -942,6 +949,11 @@ body.is-app-scrollable .app-shell {
 }
 
 @media (min-width: 900px) {
+    .settings-panel {
+        top: 98px;
+        right: 44px;
+    }
+
     .app-nav {
         top: 16px;
         right: 32px;
