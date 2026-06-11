@@ -166,14 +166,14 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "修复 Stroop 题目文字与字体颜色连续完全重复的问题。",
+        "修复了 Stroop 题目文字与字体颜色连续完全重复的问题。",
         "统一舒尔特、Stroop、N-Back 与 SET 的点击反馈。",
         "N-Back 数字切换加入轻量 Pop-up 动效。",
         "N-Back 增加当前题号。",
         "N-Back 初始数字标记为“记忆阶段”。",
         "新增正确率、答对次数与错误次数统计。",
         "新增舒尔特完成用时。",
-        "修复手机端无法滑动的问题。"
+        "修复了手机端无法滑动的问题。"
     ],
     en: [
         "Fixed consecutive repeats of identical Stroop words and font colors.",
