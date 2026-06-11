@@ -953,9 +953,10 @@ function App() {
     }, [isEnglish]);
 
     useEffect(() => {
-        document.body.classList.toggle('is-app-scrollable', !isGameView);
+        const shouldUsePageScroll = view === 'analytics' || (view === 'home' && mode === 'daily');
+        document.body.classList.toggle('is-app-scrollable', shouldUsePageScroll);
         return () => document.body.classList.remove('is-app-scrollable');
-    }, [isGameView]);
+    }, [view, mode]);
 
     useEffect(() => {
         recordRetention('session_start', {
@@ -1773,7 +1774,7 @@ function App() {
             )}
 
             {view === 'home' && (
-                <div className="home-screen app-content-screen p-6 pt-10 flex flex-col items-center h-full overflow-y-auto no-scrollbar relative">
+                <div className={`home-screen app-content-screen p-6 pt-10 flex flex-col items-center h-full overflow-y-auto no-scrollbar relative ${mode === 'daily' ? 'is-daily-home' : mode === 'comp' ? 'is-arena-home' : 'is-training-home'}`}>
                     {renderSettingsControl('home-settings-control')}
                     <div className="home-mini-brand hidden w-full max-w-sm items-center gap-2 shrink-0">
                         <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl shadow-md flex items-center justify-center shrink-0">

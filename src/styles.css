@@ -1633,7 +1633,11 @@ body.is-app-scrollable .app-shell {
 }
 
 @media (max-width: 560px) {
-    .home-screen.app-content-screen {
+    .home-screen.app-content-screen:not(.is-daily-home) {
+        padding-bottom: max(96px, calc(84px + env(safe-area-inset-bottom))) !important;
+    }
+
+    .home-screen.app-content-screen.is-daily-home {
         height: auto !important;
         min-height: 100dvh;
         padding-bottom: var(--mobile-nav-clearance) !important;
@@ -1644,10 +1648,9 @@ body.is-app-scrollable .app-shell {
         -webkit-overflow-scrolling: touch;
     }
 
-    .home-screen.app-content-screen .task-section {
+    .home-screen.app-content-screen.is-daily-home .task-section {
         margin-bottom: 0 !important;
     }
-
 }
 
 @media (min-width: 900px) {
