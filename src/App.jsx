@@ -90,6 +90,11 @@ const UI_TEXT = {
         reset: "清零",
         submit: "确认提交",
         resultTitle: "测试结束 - 最终得分",
+        resultAccuracy: "正确率",
+        resultTime: "用时",
+        resultCorrect: "答对",
+        resultMistakes: "错误",
+        resultTimes: "次",
         backHome: "返回大厅"
     },
     en: {
@@ -150,6 +155,11 @@ const UI_TEXT = {
         reset: "Reset",
         submit: "Submit",
         resultTitle: "Training Complete - Final Score",
+        resultAccuracy: "Accuracy",
+        resultTime: "Time",
+        resultCorrect: "Correct",
+        resultMistakes: "Mistakes",
+        resultTimes: "",
         backHome: "Back to Lobby"
     }
 };
@@ -171,18 +181,18 @@ const UPDATE_LINES = {
 
 const RESULT_TEXT = {
     zh: [
-        { max: 0, label: "实验室新人", sub: "别灰心，大脑正在热身！", color: "text-slate-400" },
-        { max: 200, label: "初露锋芒", sub: "神经元开始活跃，继续保持。", color: "text-blue-500" },
-        { max: 500, label: "脑力达人", sub: "专注力已经超过了 70% 的人！", color: "text-indigo-600" },
-        { max: 800, label: "认知巅峰", sub: "极速反应！你的大脑放电非常快。", color: "text-purple-600" },
-        { max: Infinity, label: "前额叶战神", sub: "你的大脑结构可能异于常人！", color: "text-amber-600" }
+        { label: "正在慢慢找到感觉", sub: "没关系，大脑也需要一点热身时间，我们下一局再试试。", color: "text-slate-500" },
+        { label: "稳稳地完成了", sub: "每一步都很认真。下一局可以放心地快一点点。", color: "text-indigo-500" },
+        { label: "冲劲满满", sub: "速度已经很棒啦，下次稍微稳一点，会更接近完美。", color: "text-blue-500" },
+        { label: "这局又快又稳", sub: "节奏和准确度都很好，这一局完成得很漂亮。", color: "text-purple-600" },
+        { label: "这次比之前更进一步", sub: "你的进步已经看得见了，保持这个节奏就很好。", color: "text-emerald-600" }
     ],
     en: [
-        { max: 0, label: "Lab Rookie", sub: "No worries. Your brain is warming up.", color: "text-slate-400" },
-        { max: 200, label: "Spark Starter", sub: "Your neurons are waking up. Keep going.", color: "text-blue-500" },
-        { max: 500, label: "Focus Builder", sub: "Your attention is getting sharp.", color: "text-indigo-600" },
-        { max: 800, label: "Cognitive Peak", sub: "Fast reactions. Your brain is firing cleanly.", color: "text-purple-600" },
-        { max: Infinity, label: "Prefrontal Master", sub: "That was seriously impressive.", color: "text-amber-600" }
+        { label: "Finding Your Rhythm", sub: "No worries. Your brain may just need a little warm-up. Let's try another round.", color: "text-slate-500" },
+        { label: "Steady All the Way", sub: "Every step was thoughtful. Next round, you can gently pick up the pace.", color: "text-indigo-500" },
+        { label: "Full of Momentum", sub: "Your speed is already great. A touch more control will bring it even closer to perfect.", color: "text-blue-500" },
+        { label: "Fast and Steady", sub: "Your rhythm and accuracy worked beautifully together this round.", color: "text-purple-600" },
+        { label: "A Step Further Than Before", sub: "Your progress is showing. Keeping this rhythm is more than enough.", color: "text-emerald-600" }
     ]
 };
 
@@ -246,13 +256,6 @@ const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
 const OWNER_TOKEN_KEY = 'prefrontal_lab_owner_token';
 const DAILY_STORAGE_KEY = 'prefrontal_lab_daily_v4';
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || '/api/retention';
-const TEST_PROBE_ID = 'LANG-PROBE-20260610-G';
-const isTestProbeEnabled = () => {
-    const params = new URLSearchParams(window.location.search);
-    const isTestSite = window.location.hostname === 'boxsbraindump.github.io'
-        && window.location.pathname.startsWith('/prefrontal-test');
-    return isTestSite || params.get('testProbe') === '1';
-};
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
     arena: 'Cognitive Arena',
@@ -634,6 +637,7 @@ function App() {
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastScore, setLastScore] = useState(0);
+    const [lastRunStats, setLastRunStats] = useState(null);
     const [isError, setIsError] = useState(false);
     const [answerFeedback, setAnswerFeedback] = useState(null);
     const [showInfo, setShowInfo] = useState(null);
@@ -644,7 +648,6 @@ function App() {
     const [cloudStatus, setCloudStatus] = useState('idle');
     const [ownerToken, setOwnerToken] = useState(() => localStorage.getItem(OWNER_TOKEN_KEY) || '');
     const [showSettings, setShowSettings] = useState(false);
-    const [showTestProbe, setShowTestProbe] = useState(() => isTestProbeEnabled());
     const ui = UI_TEXT[lang];
     const isEnglish = lang === 'en';
     const isGameView = !['home', 'result', 'analytics'].includes(view);
@@ -850,7 +853,6 @@ function App() {
     // ✨ 在这里插入：更新公告状态管理
     // ==========================================
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
-        if (isTestProbeEnabled()) return false;
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
         return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.2_update');
@@ -1178,18 +1180,57 @@ function App() {
 
     const [schulte, setSchulte] = useState({ grid: [], next: 1 });
     const [stroop, setStroop] = useState({ text: '', color: '', opts: [] });
-    const [nback, setNback] = useState({ current: null, isMatch: false, isReady: false });
+    const [nback, setNback] = useState({ current: null, previous: null, isMatch: false, isReady: false, roundId: null, roundNumber: 0 });
     const [setGame, setSetGame] = useState({ cards: [], selected: [] });
     const [neuronCount, setNeuronCount] = useState({ items: [], target: {}, targetCount: 0, currentCount: 0 });
+    const [controlPulse, setControlPulse] = useState(null);
     const nbackSeq = useRef([]);
     const feedbackTimer = useRef(null);
+    const controlPulseTimer = useRef(null);
     const neuronMoveTimer = useRef(null);
     const answerLock = useRef(false);
     const sessionIdRef = useRef(`session-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     const currentRunRef = useRef(null);
+    const runStatsRef = useRef({ task: null, attempts: 0, correct: 0, incorrect: 0, startedAtMs: 0 });
 
-    const getFeedback = (s) => {
-        return RESULT_TEXT[lang].find(item => s <= item.max);
+    const getFeedback = (stats) => {
+        const attempts = stats?.attempts || 0;
+        const correct = stats?.correct || 0;
+        const durationSeconds = Math.max(1, stats?.durationSeconds || 0);
+        const accuracy = attempts ? (correct / attempts) * 100 : 0;
+        const pace = (correct / durationSeconds) * 60;
+        const task = stats?.task;
+        const volumeTargets = { schulte: 25, stroop: 12, nback: 10, setgame: 3, neuroncount: 3, arena: 12 };
+        const fastPaceTargets = { stroop: 28, nback: 24, setgame: 5, neuroncount: 5, arena: 18 };
+        const hasEnoughVolume = correct >= (volumeTargets[task] || 8);
+        const isFast = task === 'schulte'
+            ? correct >= 25 && durationSeconds <= 45
+            : pace >= (fastPaceTargets[task] || 18);
+
+        let tier = 0;
+        if (stats?.isImproved) tier = 4;
+        else if (!hasEnoughVolume || attempts === 0) tier = 0;
+        else if (isFast && accuracy >= 90) tier = 3;
+        else if (isFast) tier = 2;
+        else if (accuracy >= 90) tier = 1;
+
+        return RESULT_TEXT[lang][tier];
+    };
+
+    const recordAttempt = (correct) => {
+        const stats = runStatsRef.current;
+        stats.attempts += 1;
+        if (correct) stats.correct += 1;
+        else stats.incorrect += 1;
+    };
+
+    const pulseControl = (target) => {
+        if (controlPulseTimer.current) clearTimeout(controlPulseTimer.current);
+        setControlPulse(target);
+        controlPulseTimer.current = setTimeout(() => {
+            setControlPulse(null);
+            controlPulseTimer.current = null;
+        }, 180);
     };
 
     const initGameCore = (type) => {
@@ -1202,20 +1243,36 @@ function App() {
             setSchulte({ grid: nums, sequence, index: 0, next: sequence[0] });
         } else if (type === 'stroop') {
             const colors = COLOR_LABELS;
-            const t = Math.floor(Math.random() * 4);
-            let c; do { c = Math.floor(Math.random() * 4); } while (c === t);
-            setStroop({
-                roundId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                textZh: colors[t].zh,
-                textEn: colors[t].en,
-                color: colors[c].val,
-                opts: [...colors].sort(() => Math.random() - 0.5)
+            const validPairs = colors.flatMap((textColor, textIndex) =>
+                colors
+                    .map((fontColor, colorIndex) => ({ textColor, fontColor, textIndex, colorIndex }))
+                    .filter(pair => pair.textIndex !== pair.colorIndex)
+            );
+
+            setStroop(previous => {
+                const availablePairs = validPairs.filter(pair =>
+                    pair.textColor.zh !== previous.textZh || pair.fontColor.val !== previous.color
+                );
+                const pair = availablePairs[Math.floor(Math.random() * availablePairs.length)];
+
+                return {
+                    roundId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    textZh: pair.textColor.zh,
+                    textEn: pair.textColor.en,
+                    color: pair.fontColor.val,
+                    opts: [...colors].sort(() => Math.random() - 0.5)
+                };
             });
         } else if (type === 'nback') {
             const level = isHard ? 2 : 1;
             const round = createNbackRound(nbackSeq.current, level);
             nbackSeq.current.push(round.current);
-            setNback(round);
+            setNback(previousRound => ({
+                ...round,
+                previous: previousRound.current,
+                roundId: `${Date.now()}-${nbackSeq.current.length}`,
+                roundNumber: nbackSeq.current.length
+            }));
             // 在 initGameCore 的 setgame 分支中修改：
         } else if (type === 'setgame') {
             const shapes = ['circle', 'square', 'triangle'];
@@ -1342,6 +1399,14 @@ function App() {
         const activeDailySpec = getDailySpec();
         const taskType = mode === 'daily' ? activeDailySpec.task : type;
         const taskName = mode === 'comp' ? 'arena' : mode === 'daily' ? 'daily' : taskType;
+        runStatsRef.current = {
+            task: mode === 'comp' ? 'arena' : taskType,
+            attempts: 0,
+            correct: 0,
+            incorrect: 0,
+            startedAtMs: Date.now()
+        };
+        setLastRunStats(null);
         currentRunRef.current = {
             task: taskName,
             dailyChallengeId: mode === 'daily' ? activeDailySpec.id : null,
@@ -1403,6 +1468,9 @@ function App() {
         setAnswerFeedback(null);
         answerLock.current = false;
         feedbackTimer.current = null;
+        if (nextType === 'setgame' && !shouldAdvance) {
+            setSetGame(previous => ({ ...previous, selected: [], errorIds: [] }));
+        }
         if (!shouldAdvance) return;
         mode === 'comp' ? switchArenaTask() : initGameCore(nextType);
     };
@@ -1435,6 +1503,7 @@ function App() {
     const showAnswerFeedback = ({ correct, points = 0, penalty = 0, showPenalty = false, nextType, target, advance = true, event, position, flashError = true, duration }) => {
         if (answerLock.current) return;
         answerLock.current = true;
+        recordAttempt(correct);
 
         if (correct) {
             setScore(s => s + points);
@@ -1462,7 +1531,8 @@ function App() {
             target: answerIsMatch ? 'match' : 'different',
             advance: true,
             event,
-            flashError: false
+            flashError: false,
+            duration: 220
         });
     };
 
@@ -1508,17 +1578,36 @@ function App() {
     const endGame = (finalScoreOverride) => {
         clearAnswerFeedback();
         const currentFinalScore = typeof finalScoreOverride === 'number' ? finalScoreOverride : score;
-        setLastScore(currentFinalScore);
-
         const isComp = mode === 'comp';
         const isDaily = mode === 'daily';
         const isInfinite = mode === 'infinite';
+        const previousBest = isComp
+            ? (history.bestCompScore || 0)
+            : isDaily
+                ? (dailyRecord.bestScore || 0)
+                : isInfinite
+                    ? 0
+                    : (history.taskBestScores?.[view] || 0);
+        const runStats = {
+            ...runStatsRef.current,
+            isImproved: previousBest > 0 && currentFinalScore > previousBest,
+            durationSeconds: runStatsRef.current.startedAtMs
+                ? Math.max(1, Math.round((Date.now() - runStatsRef.current.startedAtMs) / 1000))
+                : 0
+        };
+        setLastScore(currentFinalScore);
+        setLastRunStats(runStats);
+
         const completedTask = currentRunRef.current?.task || (isComp ? 'arena' : view);
         recordRetention('game_complete', {
             sessionId: sessionIdRef.current,
             task: completedTask,
             mode,
             score: currentFinalScore,
+            attempts: runStats.attempts,
+            correct: runStats.correct,
+            incorrect: runStats.incorrect,
+            accuracy: runStats.attempts ? Math.round((runStats.correct / runStats.attempts) * 100) : 0,
             dailyChallengeId: currentRunRef.current?.dailyChallengeId || null,
             dailyInstanceId: currentRunRef.current?.dailyInstanceId || null,
             dailyTask: currentRunRef.current?.dailyTask || null,
@@ -1526,9 +1615,7 @@ function App() {
             dailyVariant: currentRunRef.current?.dailyVariant || null,
             dailyCompletion: currentRunRef.current?.dailyCompletion || null,
             dailyDuration: currentRunRef.current?.dailyDuration || null,
-            durationSeconds: currentRunRef.current?.startedAt
-                ? Math.max(0, Math.round((Date.now() - new Date(currentRunRef.current.startedAt).getTime()) / 1000))
-                : null
+            durationSeconds: runStats.durationSeconds
         });
 
         if (isDaily) {
@@ -2043,62 +2130,6 @@ function App() {
             )}
 
             {/* 更新说明弹窗 */}
-            {showTestProbe && view !== 'analytics' && (
-                <div className="fixed inset-0 z-[130] flex items-center justify-center p-5 bg-slate-900/55 backdrop-blur-md">
-                    <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl animate-pop-center">
-                        <div className="flex items-start gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                                <Icon name="badge-check" className="h-6 w-6" />
-                            </div>
-                            <div className="min-w-0">
-                                <h2 className="text-lg font-black text-slate-900">测试版本已加载</h2>
-                                <p className="mt-1 font-mono text-[10px] font-bold text-emerald-600">{TEST_PROBE_ID}</p>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold text-slate-600">
-                            <div className="flex items-center justify-between gap-4">
-                                <span>当前应用语言</span>
-                                <strong className="text-slate-900">{lang === 'zh' ? '中文' : 'English'}</strong>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between gap-4">
-                                <span>手机浏览器语言</span>
-                                <strong className="max-w-[55%] truncate text-slate-900">{navigator.language || 'Unknown'}</strong>
-                            </div>
-                        </div>
-
-                        <p className="mt-4 text-xs font-medium leading-relaxed text-slate-500">
-                            看到此弹窗代表手机已经加载最新版。请在这里测试语言按钮，再测试右上角设置按钮。
-                        </p>
-
-                        <div className="mt-5 grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setLanguage('zh')}
-                                className={`h-11 rounded-xl border text-sm font-black ${lang === 'zh' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
-                            >
-                                中文
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setLanguage('en')}
-                                className={`h-11 rounded-xl border text-sm font-black ${lang === 'en' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
-                            >
-                                English
-                            </button>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setShowTestProbe(false)}
-                            className="mt-3 h-11 w-full rounded-xl bg-slate-900 text-sm font-black text-white"
-                        >
-                            关闭并测试设置按钮
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {showUpdateNote && view !== 'analytics' && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/60 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-pop-center relative overflow-hidden">
@@ -2203,8 +2234,11 @@ function App() {
                                         <button
                                             key={n}
                                             onClick={() => {
+                                                pulseControl(`schulte-${n}`);
+                                                const isCorrectClick = n === schulte.next;
+                                                recordAttempt(isCorrectClick);
                                                 // 只有点击“下一个正确数字”时才触发逻辑
-                                                if (n === schulte.next) {
+                                                if (isCorrectClick) {
                                                     if (currentIndex >= schulteSequence.length - 1) {
                                                         const finalScore = mode === 'infinite' ? score + 10 : score + 10 + (timeLeft * 10);
                                                         setScore(finalScore);
@@ -2221,7 +2255,7 @@ function App() {
                                                     handleArenaError(); // 点错了闪红光
                                                 }
                                             }}
-                                            className={`flex items-center justify-center font-bold text-lg rounded-lg border transition-all 
+                                            className={`schulte-cell flex items-center justify-center font-bold text-lg rounded-lg border transition-all ${controlPulse === `schulte-${n}` ? 'is-tap-pulsing' : ''}
     ${(isClicked && (mode === 'hard' || mode === 'daily')) // 竞技不使用盲点，Daily 使用进阶变体
                                                     ? 'bg-white text-slate-900 border-slate-100 shadow-sm' // 只有进阶模式是“盲点”
                                                     : (isClicked
@@ -2242,6 +2276,7 @@ function App() {
                                 <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                                     {stroop.opts.map(o => (
                                         <button key={`${stroop.roundId || 'stroop'}-${o.val}`} disabled={!!answerFeedback} onClick={(event) => {
+                                            pulseControl(`stroop-${o.val}`);
                                             const isCorrect = o.val === stroop.color;
                                             showAnswerFeedback({
                                                 correct: isCorrect,
@@ -2252,22 +2287,44 @@ function App() {
                                                 event,
                                                 flashError: false
                                             });
-                                        }} className={`stroop-choice-button ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{answerFeedback?.target === o.val && answerFeedback.status === 'correct' && <span className="stroop-correct-badge"><Icon name="check" className="w-3.5 h-3.5" /></span>}{(mode === 'normal' || mode === 'infinite') ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
+                                        }} className={`stroop-choice-button ${controlPulse === `stroop-${o.val}` ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{(mode === 'normal' || mode === 'infinite') ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
                                     ))}
                                 </div>
                             </div>
                         )}
                         {view === 'nback' && (
                             <div className="flex flex-col items-center w-full">
-                                <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center text-4xl font-black text-indigo-600 mb-12 border border-slate-100">{nback.current}</div>
+                                <div className="nback-prompt-wrap mb-12">
+                                    <div className="nback-round-progress">
+                                        {!nback.isReady
+                                            ? (isChallengeDifficulty
+                                                ? (isEnglish ? `Memory ${nback.roundNumber}/2` : `记忆阶段 ${nback.roundNumber}/2`)
+                                                : (isEnglish ? 'Memorize' : '记忆阶段'))
+                                            : (isEnglish
+                                                ? `Round ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)}`
+                                                : `第 ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)} 题`)}
+                                    </div>
+                                    <div className="nback-prompt-stack">
+                                        {nback.previous !== null && (
+                                            <div className="nback-prompt-card nback-prompt-card-previous" aria-hidden="true">
+                                                {nback.previous}
+                                            </div>
+                                        )}
+                                        <div key={nback.roundId || 'nback-initial'} className="nback-prompt-card nback-prompt-card-current">
+                                            {nback.current}
+                                        </div>
+                                    </div>
+                                </div>
                                 {nback.isReady ? (
                                     <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
                                         <button disabled={!!answerFeedback} onClick={(event) => {
+                                            pulseControl('nback-match');
                                             handleNbackAnswer(true, event);
-                                        }} className={`py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
                                         <button disabled={!!answerFeedback} onClick={(event) => {
+                                            pulseControl('nback-different');
                                             handleNbackAnswer(false, event);
-                                        }} className={`py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
                                     </div>
                                 ) : (
                                     <button disabled={!!answerFeedback} onClick={() => {
@@ -2286,6 +2343,7 @@ function App() {
                                             disabled={!!answerFeedback}
                                             onClick={(event) => {
                                                 if (answerLock.current) return;
+                                                pulseControl(`set-${card.id}`);
                                                 const newSel = setGame.selected.includes(card.id) ? setGame.selected.filter(id => id !== card.id) : [...setGame.selected, card.id];
                                                 if (newSel.length === 3) {
                                                     const selectedCards = newSel.map(id => setGame.cards.find(c => c.id === id));
@@ -2309,6 +2367,7 @@ function App() {
                                                             duration: 520
                                                         });
                                                     } else {
+                                                        setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: newSel }));
                                                         showAnswerFeedback({
                                                             correct: false,
                                                             penalty: 20,
@@ -2319,29 +2378,21 @@ function App() {
                                                             position: getCenteredFeedbackPosition(event.currentTarget.closest('.setgame-grid')),
                                                             flashError: false
                                                         });
-                                                        setSetGame(p => ({ ...p, selected: [] }));
                                                     }
                                                 } else {
-                                                    setSetGame(p => ({ ...p, selected: newSel, successIds: [] }));
+                                                    setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: [] }));
                                                 }
                                             }}
-                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${setGame.successIds?.includes(card.id)
+                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${controlPulse === `set-${card.id}` ? 'is-tap-pulsing' : ''} ${setGame.successIds?.includes(card.id)
                                                 ? 'is-set-success'
-                                                : setGame.selected.includes(card.id)
-                                                    ? 'border-indigo-500 bg-indigo-50 shadow-md scale-95'
-                                                    : 'border-slate-100 bg-white shadow-sm'
+                                                : setGame.errorIds?.includes(card.id)
+                                                    ? 'is-set-wrong'
+                                                    : setGame.selected.includes(card.id)
+                                                        ? 'border-indigo-500 bg-indigo-50 shadow-md scale-95'
+                                                        : 'border-slate-100 bg-white shadow-sm'
                                                 }`}
                                         >
-                                            {setGame.successIds?.includes(card.id) && (
-                                                <span
-                                                    className="pointer-events-none absolute inset-0 rounded-3xl"
-                                                    style={{
-                                                        background: 'rgba(209, 250, 229, 0.72)',
-                                                        boxShadow: 'inset 0 0 0 3px rgba(16, 185, 129, 0.42), 0 0 0 4px rgba(16, 185, 129, 0.12)'
-                                                    }}
-                                                />
-                                            )}
-                                            <div style={{ color: card.color, ...(setGame.successIds?.includes(card.id) ? { transform: 'scale(1.08)', position: 'relative', zIndex: 1 } : {}) }} className={card.fill ? 'opacity-100' : 'opacity-30'}>
+                                            <div style={{ color: card.color }} className={card.fill ? 'opacity-100' : 'opacity-30'}>
                                                 <Icon name={card.shape} className="w-10 h-10" />
                                             </div>
                                         </button>
@@ -2459,8 +2510,13 @@ function App() {
             )}
 
             {view === 'result' && (() => {
-                const feedback = getFeedback(lastScore);
+                const feedback = getFeedback(lastRunStats);
                 const isDailyResult = mode === 'daily';
+                const resultAccuracy = lastRunStats?.attempts
+                    ? Math.round((lastRunStats.correct / lastRunStats.attempts) * 100)
+                    : 0;
+                const resultDuration = lastRunStats?.durationSeconds || 0;
+                const showCompletionTime = lastRunStats?.task === 'schulte';
                 return (
                     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
                         <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm ${isDailyResult ? 'bg-emerald-50 text-emerald-500' : 'bg-indigo-50 text-indigo-500'}`}>
@@ -2470,8 +2526,22 @@ function App() {
                         <div className={`text-6xl font-black mb-6 font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{lastScore}</div>
                         <div className={`text-xl font-black mb-1 ${isDailyResult ? 'text-emerald-600' : feedback.color}`}>{isDailyResult ? `${ui.dailyStreak} ${dailyStreak} ${ui.dailyDays}` : feedback.label}</div>
                         <div className="text-xs text-slate-500 mb-4 font-medium leading-relaxed max-w-[240px]">{isDailyResult ? ui.dailyFinishedSub : feedback.sub}</div>
+                        <div className="result-metrics-grid w-full max-w-sm mb-6">
+                            <div className="result-metric">
+                                <span>{ui.resultAccuracy}</span>
+                                <strong>{resultAccuracy}%</strong>
+                            </div>
+                            <div className="result-metric">
+                                <span>{showCompletionTime ? ui.resultTime : ui.resultCorrect}</span>
+                                <strong>{showCompletionTime ? `${resultDuration}s` : `${lastRunStats?.correct || 0}${ui.resultTimes}`}</strong>
+                            </div>
+                            <div className="result-metric">
+                                <span>{ui.resultMistakes}</span>
+                                <strong>{lastRunStats?.incorrect || 0}{ui.resultTimes}</strong>
+                            </div>
+                        </div>
                         {isDailyResult && (
-                            <div className="mb-10 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-black">
+                            <div className="mb-6 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-black">
                                 {ui.dailyTomorrow}
                             </div>
                         )}
