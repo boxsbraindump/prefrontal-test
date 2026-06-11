@@ -33,7 +33,7 @@ const LatexFmt = ({ text }) => {
 
 const UI_TEXT = {
     zh: {
-        appTitle: "前额叶实验室 6.1.2",
+        appTitle: "前额叶实验室 6.1.3",
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
@@ -47,7 +47,7 @@ const UI_TEXT = {
         arenaShortTitle: "全能竞技",
         arenaSubtitle: "混合：舒尔特方格 / Stroop反应 / 快速SET / N-Back / 神经元计数",
         updateTitle: "实验室更新公告",
-        updateVersion: "Version 6.1.2",
+        updateVersion: "Version 6.1.3",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
         navTrain: "训练",
@@ -98,7 +98,7 @@ const UI_TEXT = {
         backHome: "返回大厅"
     },
     en: {
-        appTitle: "Prefrontal Lab 6.1.2",
+        appTitle: "Prefrontal Lab 6.1.3",
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
@@ -112,7 +112,7 @@ const UI_TEXT = {
         arenaShortTitle: "Arena",
         arenaSubtitle: "Mixed training: Schulte Grid / Stroop / SET / N-Back / Neuron Counting",
         updateTitle: "Lab Update",
-        updateVersion: "Version 6.1.2",
+        updateVersion: "Version 6.1.3",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
         navTrain: "Train",
@@ -166,16 +166,24 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "新增每日挑战：固定周节奏、今日最好、连续打卡、本周打卡进度。",
-        "新增无限模式：无倒计时自由练习，不影响历史最高分。",
-        "优化网页/移动端导航、设置入口、Daily 与竞技页视觉层级。",
-        "优化 Stroop、SET 等任务反馈，让答对状态更清楚。"
+        "修复 Stroop 题目文字与字体颜色连续完全重复的问题。",
+        "统一舒尔特、Stroop、N-Back 与 SET 的点击反馈。",
+        "N-Back 数字切换加入轻量 Pop-up 动效。",
+        "N-Back 增加当前题号。",
+        "N-Back 初始数字标记为“记忆阶段”。",
+        "新增正确率、答对次数与错误次数统计。",
+        "新增舒尔特完成用时。",
+        "修复手机端无法滑动的问题。"
     ],
     en: [
-        "Added Daily Challenge with weekday rotation, today best, streaks, and weekly check-ins.",
-        "Added Endless Mode for no-timer free practice without changing personal bests.",
-        "Refined responsive navigation, settings, Daily layout, and Arena visual hierarchy.",
-        "Improved Stroop and SET feedback so correct answers feel clearer."
+        "Fixed consecutive repeats of identical Stroop words and font colors.",
+        "Unified tap feedback across Schulte, Stroop, N-Back, and SET.",
+        "Added a lightweight pop-up transition between N-Back numbers.",
+        "Added the current round number to N-Back.",
+        "N-Back opening numbers are now labeled as the memory stage.",
+        "Added accuracy, correct-answer, and mistake statistics.",
+        "Added Schulte completion time.",
+        "Fixed scrolling on mobile devices."
     ]
 };
 
@@ -855,12 +863,12 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.2_update');
+        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.3_update');
     });
 
     const closeUpdateNote = () => {
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
-        localStorage.setItem('prefrontal_lab_v6.1.2_update', 'true');
+        localStorage.setItem('prefrontal_lab_v6.1.3_update', 'true');
         setShowUpdateNote(false);
     };
 
@@ -2133,7 +2141,7 @@ function App() {
             {/* 更新说明弹窗 */}
             {showUpdateNote && view !== 'analytics' && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/60 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-pop-center relative overflow-hidden">
+                    <div className="bg-white w-full max-w-sm max-h-[calc(100dvh-3rem)] rounded-[2.5rem] p-8 shadow-2xl animate-pop-center relative overflow-y-auto overscroll-contain">
                         {/* 背景装饰图层 */}
                         <div className="absolute top-0 right-0 p-4 opacity-5">
                             <Icon name="wrench" className="w-20 h-20" />
