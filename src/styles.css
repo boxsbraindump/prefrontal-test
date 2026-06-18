@@ -23,6 +23,12 @@ body.is-app-scrollable {
     -webkit-overflow-scrolling: touch;
 }
 
+html.is-app-scrollable {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+}
+
 #root {
     height: 100vh;
     height: 100dvh;
@@ -567,6 +573,21 @@ body.is-app-scrollable .app-shell {
     padding: 12px;
 }
 
+.daily-week-progress {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.daily-week-progress > div {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    transition: width 260ms ease;
+}
+
 .daily-week-row {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -607,6 +628,70 @@ body.is-app-scrollable .app-shell {
     color: #94a3b8;
     font-size: 9px;
     font-weight: 900;
+}
+
+.daily-tomorrow-panel {
+    margin-top: 12px;
+    padding: 11px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.daily-tomorrow-panel.is-unlocked {
+    border-color: #bbf7d0;
+    background: linear-gradient(135deg, #ffffff, #f0fdf4);
+}
+
+.daily-tomorrow-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 14px;
+    background: #f1f5f9;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.daily-tomorrow-panel.is-unlocked .daily-tomorrow-icon {
+    background: #dcfce7;
+    color: #10b981;
+}
+
+.daily-tomorrow-chip {
+    max-width: 92px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #047857;
+    font-size: 10px;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.daily-save-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.daily-save-row small {
+    color: #cbd5e1;
+    font-size: 10px;
+    font-weight: 800;
 }
 
 .daily-start-button {
@@ -745,6 +830,38 @@ body.is-app-scrollable .app-shell {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 18px;
     line-height: 1.2;
+}
+
+.daily-result-momentum {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 0 18px;
+    padding: 12px;
+    border: 1px solid #bbf7d0;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ffffff, #f0fdf4);
+}
+
+.daily-result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 2px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.daily-result-row + .daily-result-row {
+    border-top: 1px solid rgba(16, 185, 129, 0.12);
+}
+
+.daily-result-row strong {
+    color: #047857;
+    font-size: 12px;
+    font-weight: 950;
+    text-align: right;
 }
 
 .result-icon-orb {

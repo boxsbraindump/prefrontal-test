@@ -76,8 +76,24 @@ const UI_TEXT = {
         dailyReplay: "再冲一次",
         dailyDays: "天",
         dailyFinishedTitle: "今日已打卡",
-        dailyFinishedSub: "连续记录保持中，明天会刷新新的挑战。",
+        dailyFinishedSub: "今日已点亮，明天回来保持火苗。",
         dailyTomorrow: "明天解锁新挑战",
+        dailyWeeklyGoal: "本周目标",
+        dailyWeeklyDone: "本周专注徽章已点亮",
+        dailyTomorrowPreview: "明日预告",
+        dailyTomorrowLocked: "完成今日挑战后查看明日预告",
+        dailyTomorrowPrefix: "明天",
+        dailySaveProgress: "本地保存中",
+        dailySaveProgressHint: "未来可同步到其他设备",
+        dailySeeTomorrow: "明天见",
+        dailyPracticeAgain: "再练一次",
+        dailyCategories: {
+            schulte: "视觉搜索挑战",
+            stroop: "反应控制挑战",
+            nback: "记忆类挑战",
+            setgame: "逻辑挑战",
+            neuroncount: "计数挑战"
+        },
         moduleLabel: "TRAINING MODULE",
         training: "TRAINING",
         arenaMode: "ARENA MODE",
@@ -144,8 +160,24 @@ const UI_TEXT = {
         dailyReplay: "Try again",
         dailyDays: "days",
         dailyFinishedTitle: "Daily checked in",
-        dailyFinishedSub: "Your streak is alive. A new challenge unlocks tomorrow.",
+        dailyFinishedSub: "Today is lit. Come back tomorrow to keep the spark alive.",
         dailyTomorrow: "New challenge tomorrow",
+        dailyWeeklyGoal: "Weekly goal",
+        dailyWeeklyDone: "Weekly focus badge lit",
+        dailyTomorrowPreview: "Tomorrow preview",
+        dailyTomorrowLocked: "Finish today to reveal tomorrow",
+        dailyTomorrowPrefix: "Tomorrow",
+        dailySaveProgress: "Saved locally",
+        dailySaveProgressHint: "Sync to other devices later",
+        dailySeeTomorrow: "See you tomorrow",
+        dailyPracticeAgain: "Practice again",
+        dailyCategories: {
+            schulte: "visual search challenge",
+            stroop: "reaction control challenge",
+            nback: "memory challenge",
+            setgame: "logic challenge",
+            neuroncount: "counting challenge"
+        },
         moduleLabel: "TRAINING MODULE",
         training: "TRAINING",
         arenaMode: "ARENA MODE",
@@ -270,6 +302,7 @@ const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
 const OWNER_TOKEN_KEY = 'prefrontal_lab_owner_token';
 const DAILY_STORAGE_KEY = 'prefrontal_lab_daily_v4';
 const SOUND_STORAGE_KEY = 'prefrontal_lab_sound_enabled';
+const WEEKLY_DAILY_GOAL = 5;
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || '/api/retention';
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
@@ -507,6 +540,12 @@ const getDailySpec = (day = getDayKey()) => {
         ...challenge,
         level: 'daily'
     };
+};
+
+const getOffsetDayKey = (day, offset) => {
+    const date = new Date(`${day}T00:00:00`);
+    date.setDate(date.getDate() + offset);
+    return getDayKey(date);
 };
 
 const getVisitorId = () => {
@@ -788,7 +827,13 @@ function App() {
     const dailyRecord = dailyProgress.days?.[dailySpec.day] || {};
     const dailyStreak = getDailyStreak(dailyProgress.days, dailySpec.day);
     const dailyWeekDays = getWeeklyDailyDays(dailyProgress.days, dailySpec.day);
+    const dailyWeeklyCount = dailyWeekDays.filter(day => day.completed).length;
+    const dailyWeeklyGoalCount = Math.min(dailyWeeklyCount, WEEKLY_DAILY_GOAL);
+    const dailyWeeklyGoalComplete = dailyWeeklyCount >= WEEKLY_DAILY_GOAL;
+    const tomorrowSpec = getDailySpec(getOffsetDayKey(dailySpec.day, 1));
+    const tomorrowCategory = ui.dailyCategories?.[tomorrowSpec.task] || (isEnglish ? TASK_TRANSLATIONS[tomorrowSpec.task]?.title : TASK_DATA[tomorrowSpec.task]?.title) || tomorrowSpec.task;
     const dailyTheme = dailySpec.theme?.[lang] || dailySpec.theme?.en;
+    const tomorrowTheme = tomorrowSpec.theme?.[lang] || tomorrowSpec.theme?.en;
     const dailyRuleLabel = dailySpec.ruleLabel?.[lang] || (dailySpec.completion === 'finish-grid' ? ui.dailyGoalFinish : ui.dailyGoalTimed);
     const dailyDurationLabel = `${dailySpec.duration || 60}s`;
     const dailyWeekLabels = isEnglish ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['一', '二', '三', '四', '五', '六', '日'];
@@ -1108,7 +1153,11 @@ function App() {
     useEffect(() => {
         const shouldUsePageScroll = view === 'analytics' || (view === 'home' && mode === 'daily');
         document.body.classList.toggle('is-app-scrollable', shouldUsePageScroll);
-        return () => document.body.classList.remove('is-app-scrollable');
+        document.documentElement.classList.toggle('is-app-scrollable', shouldUsePageScroll);
+        return () => {
+            document.body.classList.remove('is-app-scrollable');
+            document.documentElement.classList.remove('is-app-scrollable');
+        };
     }, [view, mode]);
 
     useEffect(() => {
@@ -2157,7 +2206,12 @@ function App() {
                                     <div className="daily-week-panel">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="text-[10px] font-black text-slate-400 brand-text">{ui.dailyWeek}</div>
-                                            <div className="text-[10px] font-bold text-slate-400">{ui.dailyReward}</div>
+                                            <div className={`text-[10px] font-black ${dailyWeeklyGoalComplete ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                                {dailyWeeklyGoalComplete ? ui.dailyWeeklyDone : `${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}
+                                            </div>
+                                        </div>
+                                        <div className="daily-week-progress" aria-hidden="true">
+                                            <div style={{ width: `${Math.min(100, (dailyWeeklyGoalCount / WEEKLY_DAILY_GOAL) * 100)}%` }} />
                                         </div>
                                         <div className="daily-week-row">
                                             {dailyWeekDays.map(day => (
@@ -2169,6 +2223,31 @@ function App() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+
+                                    <div className={`daily-tomorrow-panel ${dailyRecord.completed ? 'is-unlocked' : ''}`}>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="daily-tomorrow-icon">
+                                                <Icon name={dailyRecord.completed ? TASK_DATA[tomorrowSpec.task].icon : 'lock'} className="w-4 h-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-black brand-text text-slate-400">{ui.dailyTomorrowPreview}</div>
+                                                <div className="text-xs font-black text-slate-700 truncate">
+                                                    {dailyRecord.completed
+                                                        ? `${ui.dailyTomorrowPrefix}: ${tomorrowCategory}`
+                                                        : ui.dailyTomorrowLocked}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {dailyRecord.completed && (
+                                            <div className="daily-tomorrow-chip">{tomorrowTheme.title}</div>
+                                        )}
+                                    </div>
+
+                                    <div className="daily-save-row">
+                                        <Icon name="cloud" className="w-3.5 h-3.5" />
+                                        <span>{ui.dailySaveProgress}</span>
+                                        <small>{ui.dailySaveProgressHint}</small>
                                     </div>
 
                                     <button
@@ -2822,12 +2901,26 @@ function App() {
                             </div>
                         </div>
                         {isDailyResult && (
-                            <div className="mb-6 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-black">
-                                {ui.dailyTomorrow}
+                            <div className="daily-result-momentum">
+                                <div className="daily-result-row">
+                                    <span>{dailyWeeklyGoalComplete ? ui.dailyWeeklyDone : ui.dailyWeeklyGoal}</span>
+                                    <strong>{dailyWeeklyGoalCount}/{WEEKLY_DAILY_GOAL}</strong>
+                                </div>
+                                <div className="daily-result-row">
+                                    <span>{ui.dailyTomorrowPreview}</span>
+                                    <strong>{tomorrowCategory}</strong>
+                                </div>
                             </div>
                         )}
                         {!isDailyResult && <div className="mb-8" />}
-                        <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
+                        {isDailyResult ? (
+                            <div className="w-full max-w-sm flex flex-col gap-3">
+                                <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.dailySeeTomorrow}</button>
+                                <button onClick={() => { playSound('tap'); startChallenge(dailySpec.task); }} className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black">{ui.dailyPracticeAgain}</button>
+                            </div>
+                        ) : (
+                            <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
+                        )}
                     </div>
                 );
             })()}
