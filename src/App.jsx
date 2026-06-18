@@ -409,8 +409,8 @@ const createSoundEngine = () => {
                 tone({ freq: 660, duration: 0.07, type: 'sine', gain: 0.055 });
                 tone({ freq: 990, start: 0.045, duration: 0.12, type: 'sine', gain: 0.055 });
             } else if (kind === 'error') {
-                tone({ freq: 180, duration: 0.08, type: 'triangle', gain: 0.054, filter: 900 });
-                noise({ start: 0.01, duration: 0.05, gain: 0.017, filter: 700 });
+                tone({ freq: 180, duration: 0.08, type: 'triangle', gain: 0.108, filter: 900 });
+                noise({ start: 0.01, duration: 0.05, gain: 0.034, filter: 700 });
             } else if (kind === 'complete') {
                 tone({ freq: 523, duration: 0.08, type: 'sine', gain: 0.048 });
                 tone({ freq: 784, start: 0.065, duration: 0.10, type: 'sine', gain: 0.052 });
