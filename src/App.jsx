@@ -297,7 +297,7 @@ const createSoundEngine = () => {
         if (!ctx) {
             ctx = new AudioContext();
             master = ctx.createGain();
-            master.gain.value = 0.57;
+            master.gain.value = 0.86;
             master.connect(ctx.destination);
         }
 
