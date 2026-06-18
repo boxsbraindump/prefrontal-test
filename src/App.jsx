@@ -56,6 +56,9 @@ const UI_TEXT = {
         navAnalytics: "分析",
         settings: "设置",
         settingsLanguage: "语言",
+        settingsSound: "音效",
+        settingsSoundOn: "开启",
+        settingsSoundOff: "关闭",
         settingsData: "数据与同步",
         settingsSoon: "稍后开放",
         dailyTitle: "每日挑战",
@@ -121,6 +124,9 @@ const UI_TEXT = {
         navAnalytics: "Analytics",
         settings: "Settings",
         settingsLanguage: "Language",
+        settingsSound: "Sound",
+        settingsSoundOn: "On",
+        settingsSoundOff: "Off",
         settingsData: "Data & Sync",
         settingsSoon: "Coming soon",
         dailyTitle: "Daily Challenge",
@@ -263,6 +269,7 @@ const RETENTION_STORAGE_KEY = 'prefrontal_lab_retention_v1';
 const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
 const OWNER_TOKEN_KEY = 'prefrontal_lab_owner_token';
 const DAILY_STORAGE_KEY = 'prefrontal_lab_daily_v4';
+const SOUND_STORAGE_KEY = 'prefrontal_lab_sound_enabled';
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || '/api/retention';
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
@@ -277,6 +284,113 @@ const GAME_CLICK_LABELS = {
 const SEO_TITLE = {
     zh: '前额叶实验室 | 认知训练小游戏',
     en: 'Prefrontal Lab | Cognitive Training Games'
+};
+
+const createSoundEngine = () => {
+    let ctx = null;
+    let master = null;
+
+    const getContext = () => {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return null;
+
+        if (!ctx) {
+            ctx = new AudioContext();
+            master = ctx.createGain();
+            master.gain.value = 0.44;
+            master.connect(ctx.destination);
+        }
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        return ctx;
+    };
+
+    const tone = ({ freq, start = 0, duration = 0.08, type = 'sine', gain = 0.08, filter = 2400 }) => {
+        const audio = getContext();
+        if (!audio || !master) return;
+
+        const now = audio.currentTime + start;
+        const oscillator = audio.createOscillator();
+        const amp = audio.createGain();
+        const lowpass = audio.createBiquadFilter();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, now);
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(filter, now);
+        amp.gain.setValueAtTime(0.0001, now);
+        amp.gain.exponentialRampToValueAtTime(gain, now + 0.012);
+        amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        oscillator.connect(lowpass);
+        lowpass.connect(amp);
+        amp.connect(master);
+        oscillator.start(now);
+        oscillator.stop(now + duration + 0.02);
+    };
+
+    const noise = ({ start = 0, duration = 0.08, gain = 0.025, filter = 1800 }) => {
+        const audio = getContext();
+        if (!audio || !master) return;
+
+        const buffer = audio.createBuffer(1, Math.max(1, Math.floor(audio.sampleRate * duration)), audio.sampleRate);
+        const samples = buffer.getChannelData(0);
+        for (let i = 0; i < samples.length; i += 1) {
+            samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length);
+        }
+
+        const now = audio.currentTime + start;
+        const source = audio.createBufferSource();
+        const amp = audio.createGain();
+        const lowpass = audio.createBiquadFilter();
+        source.buffer = buffer;
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(filter, now);
+        amp.gain.setValueAtTime(gain, now);
+        amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        source.connect(lowpass);
+        lowpass.connect(amp);
+        amp.connect(master);
+        source.start(now);
+        source.stop(now + duration);
+    };
+
+    return {
+        play(kind, enabled = true) {
+            if (!enabled) return;
+            getContext();
+
+            if (kind === 'tap') {
+                tone({ freq: 760, duration: 0.045, type: 'triangle', gain: 0.035, filter: 3200 });
+            } else if (kind === 'scoreTick') {
+                tone({ freq: 520, duration: 0.055, type: 'sine', gain: 0.04, filter: 1800 });
+            } else if (kind === 'scoreTickHigh') {
+                tone({ freq: 700, duration: 0.055, type: 'sine', gain: 0.042, filter: 2200 });
+            } else if (kind === 'start') {
+                tone({ freq: 520, duration: 0.055, type: 'triangle', gain: 0.04 });
+                tone({ freq: 780, start: 0.045, duration: 0.07, type: 'triangle', gain: 0.045 });
+            } else if (kind === 'success') {
+                tone({ freq: 660, duration: 0.07, type: 'sine', gain: 0.055 });
+                tone({ freq: 990, start: 0.045, duration: 0.12, type: 'sine', gain: 0.055 });
+            } else if (kind === 'error') {
+                tone({ freq: 180, duration: 0.08, type: 'triangle', gain: 0.045, filter: 900 });
+                noise({ start: 0.01, duration: 0.05, gain: 0.014, filter: 700 });
+            } else if (kind === 'complete') {
+                tone({ freq: 523, duration: 0.08, type: 'sine', gain: 0.048 });
+                tone({ freq: 784, start: 0.065, duration: 0.10, type: 'sine', gain: 0.052 });
+                tone({ freq: 1046, start: 0.14, duration: 0.16, type: 'sine', gain: 0.05 });
+                noise({ start: 0.12, duration: 0.12, gain: 0.012, filter: 3600 });
+            } else if (kind === 'daily') {
+                tone({ freq: 392, duration: 0.08, type: 'triangle', gain: 0.05 });
+                tone({ freq: 659, start: 0.055, duration: 0.1, type: 'sine', gain: 0.052 });
+                tone({ freq: 988, start: 0.13, duration: 0.18, type: 'sine', gain: 0.05 });
+                noise({ start: 0.05, duration: 0.16, gain: 0.016, filter: 2800 });
+            }
+        }
+    };
 };
 
 const getInitialLanguage = () => {
@@ -645,6 +759,7 @@ function App() {
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastScore, setLastScore] = useState(0);
+    const [animatedScore, setAnimatedScore] = useState(0);
     const [lastRunStats, setLastRunStats] = useState(null);
     const [isError, setIsError] = useState(false);
     const [answerFeedback, setAnswerFeedback] = useState(null);
@@ -656,6 +771,13 @@ function App() {
     const [cloudStatus, setCloudStatus] = useState('idle');
     const [ownerToken, setOwnerToken] = useState(() => localStorage.getItem(OWNER_TOKEN_KEY) || '');
     const [showSettings, setShowSettings] = useState(false);
+    const [soundEnabled, setSoundEnabled] = useState(() => {
+        try {
+            return localStorage.getItem(SOUND_STORAGE_KEY) !== 'off';
+        } catch (error) {
+            return true;
+        }
+    });
     const ui = UI_TEXT[lang];
     const isEnglish = lang === 'en';
     const isGameView = !['home', 'result', 'analytics'].includes(view);
@@ -735,6 +857,7 @@ function App() {
         };
 
     const setLanguage = (nextLang) => {
+        playSound('tap');
         setLang(nextLang);
         setShowSettings(false);
 
@@ -867,13 +990,18 @@ function App() {
     });
 
     const closeUpdateNote = () => {
+        playSound('tap');
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
         localStorage.setItem('prefrontal_lab_v6.1.3_update', 'true');
         setShowUpdateNote(false);
     };
 
     const goHomeMode = (nextMode) => {
-        if (nextMode === 'hard' && !history.isHardUnlocked) return;
+        if (nextMode === 'hard' && !history.isHardUnlocked) {
+            playSound('error');
+            return;
+        }
+        playSound('tap');
         setMode(nextMode);
         setView('home');
     };
@@ -912,7 +1040,10 @@ function App() {
         <div className={`settings-control ${className}`}>
             <button
                 type="button"
-                onClick={() => setShowSettings(prev => !prev)}
+                onClick={() => {
+                    playSound('tap');
+                    setShowSettings(prev => !prev);
+                }}
                 className="settings-toggle"
                 aria-label={ui.settings}
                 aria-expanded={showSettings}
@@ -946,6 +1077,20 @@ function App() {
                         </button>
                     ))}
                 </div>
+            </div>
+            <div className="settings-sound-row">
+                <div className="settings-sound-label">
+                    <Icon name={soundEnabled ? 'volume-2' : 'volume-x'} className="w-4 h-4" />
+                    <span>{ui.settingsSound}</span>
+                </div>
+                <button
+                    type="button"
+                    onClick={toggleSound}
+                    className={`settings-sound-toggle ${soundEnabled ? 'is-active' : ''}`}
+                    aria-pressed={soundEnabled}
+                >
+                    {soundEnabled ? ui.settingsSoundOn : ui.settingsSoundOff}
+                </button>
             </div>
             <div className="settings-sync-row">
                 <Icon name="cloud" className="w-4 h-4" />
@@ -1197,10 +1342,34 @@ function App() {
     const feedbackTimer = useRef(null);
     const controlPulseTimer = useRef(null);
     const neuronMoveTimer = useRef(null);
+    const resultScoreFrame = useRef(null);
+    const resultScoreTickRef = useRef({ lastAt: 0, lastStep: 0 });
     const answerLock = useRef(false);
     const sessionIdRef = useRef(`session-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     const currentRunRef = useRef(null);
     const runStatsRef = useRef({ task: null, attempts: 0, correct: 0, incorrect: 0, startedAtMs: 0 });
+    const soundEngineRef = useRef(null);
+
+    if (!soundEngineRef.current) {
+        soundEngineRef.current = createSoundEngine();
+    }
+
+    const playSound = (kind, forceEnabled = false) => {
+        soundEngineRef.current?.play(kind, forceEnabled || soundEnabled);
+    };
+
+    const toggleSound = () => {
+        const nextEnabled = !soundEnabled;
+        setSoundEnabled(nextEnabled);
+        try {
+            localStorage.setItem(SOUND_STORAGE_KEY, nextEnabled ? 'on' : 'off');
+        } catch (error) {
+            // Sound preference is nice-to-have; keep the app usable if storage is blocked.
+        }
+        if (nextEnabled) {
+            soundEngineRef.current?.play('success', true);
+        }
+    };
 
     const getFeedback = (stats) => {
         const attempts = stats?.attempts || 0;
@@ -1224,6 +1393,33 @@ function App() {
         else if (accuracy >= 90) tier = 1;
 
         return RESULT_TEXT[lang][tier];
+    };
+
+    const getResultPresentation = ({ isDailyResult, resultAccuracy }) => {
+        if (isDailyResult) {
+            return {
+                icon: dailyStreak > 0 ? 'flame' : 'badge-check',
+                className: 'is-daily'
+            };
+        }
+
+        if (lastRunStats?.isImproved) {
+            return { icon: 'trophy', className: 'is-record' };
+        }
+
+        if (resultAccuracy >= 92 && lastScore >= 500) {
+            return { icon: 'sparkles', className: 'is-excellent' };
+        }
+
+        if (resultAccuracy >= 80) {
+            return { icon: 'zap', className: 'is-sharp' };
+        }
+
+        if (resultAccuracy >= 60) {
+            return { icon: 'badge-check', className: 'is-steady' };
+        }
+
+        return { icon: 'brain', className: 'is-warmup' };
     };
 
     const recordAttempt = (correct) => {
@@ -1402,6 +1598,7 @@ function App() {
     };
 
     const startChallenge = (type) => {
+        playSound('start');
         clearAnswerFeedback();
         setScore(0);
         nbackSeq.current = [];
@@ -1513,6 +1710,7 @@ function App() {
         if (answerLock.current) return;
         answerLock.current = true;
         recordAttempt(correct);
+        playSound(correct ? 'success' : 'error');
 
         if (correct) {
             setScore(s => s + points);
@@ -1528,6 +1726,7 @@ function App() {
 
     const handleNbackAnswer = (answerIsMatch, event) => {
         if (!nback.isReady) {
+            playSound('tap');
             initGameCore('nback');
             return;
         }
@@ -1691,8 +1890,62 @@ function App() {
         return () => {
             if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
             if (neuronMoveTimer.current) clearInterval(neuronMoveTimer.current);
+            if (resultScoreFrame.current) cancelAnimationFrame(resultScoreFrame.current);
         };
     }, []);
+
+    useEffect(() => {
+        if (resultScoreFrame.current) {
+            cancelAnimationFrame(resultScoreFrame.current);
+            resultScoreFrame.current = null;
+        }
+
+        if (view !== 'result') {
+            setAnimatedScore(0);
+            return;
+        }
+
+        const targetScore = Math.max(0, Math.round(lastScore || 0));
+        if (!targetScore || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+            setAnimatedScore(targetScore);
+            setTimeout(() => playSound(mode === 'daily' ? 'daily' : 'complete'), 120);
+            return;
+        }
+
+        const duration = Math.min(920, Math.max(560, 460 + targetScore * 0.45));
+        const startedAt = performance.now();
+        resultScoreTickRef.current = { lastAt: 0, lastStep: -1 };
+
+        const tick = (now) => {
+            const progress = Math.min(1, (now - startedAt) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const nextScore = Math.round(targetScore * eased);
+            setAnimatedScore(nextScore);
+
+            const tickStep = Math.floor(progress * 10);
+            if (soundEnabled && tickStep !== resultScoreTickRef.current.lastStep && now - resultScoreTickRef.current.lastAt > 58) {
+                resultScoreTickRef.current = { lastAt: now, lastStep: tickStep };
+                playSound(tickStep > 6 ? 'scoreTickHigh' : 'scoreTick');
+            }
+
+            if (progress < 1) {
+                resultScoreFrame.current = requestAnimationFrame(tick);
+            } else {
+                resultScoreFrame.current = null;
+                setTimeout(() => playSound(mode === 'daily' ? 'daily' : 'complete'), 90);
+            }
+        };
+
+        setAnimatedScore(0);
+        resultScoreFrame.current = requestAnimationFrame(tick);
+
+        return () => {
+            if (resultScoreFrame.current) {
+                cancelAnimationFrame(resultScoreFrame.current);
+                resultScoreFrame.current = null;
+            }
+        };
+    }, [view, lastScore]);
 
     useEffect(() => {
         if (neuronMoveTimer.current) {
@@ -1840,7 +2093,11 @@ function App() {
                                     <button
                                         key={m}
                                         onClick={() => {
-                                            if (isLocked) return; // 拦截点击
+                                            if (isLocked) {
+                                                playSound('error');
+                                                return; // 拦截点击
+                                            }
+                                            playSound('tap');
                                             setMode(m);
                                         }}
                                         className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all 
@@ -1962,7 +2219,7 @@ function App() {
                                                 <div className="task-subtitle text-[11px] text-slate-500 font-medium">{getTaskHome(type, mode === 'hard')}</div>
                                             </div>
                                         </div>
-                                        <button onClick={(event) => { event.stopPropagation(); setShowInfo(type); }} className="info-button p-2 ml-1 text-slate-300"><Icon name="info" className="w-5 h-5" /></button>
+                                        <button onClick={(event) => { event.stopPropagation(); playSound('tap'); setShowInfo(type); }} className="info-button p-2 ml-1 text-slate-300"><Icon name="info" className="w-5 h-5" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -2193,6 +2450,7 @@ function App() {
                     <div className="game-topbar h-14 px-4 flex-shrink-0 grid grid-cols-[1fr_auto_1fr] items-center bg-white border-b border-slate-100">
                         <div className="flex justify-start">
                             <button onClick={() => {
+                                playSound('tap');
                                 clearAnswerFeedback();
                                 if (mode === 'infinite') {
                                     endGame(score);
@@ -2246,6 +2504,7 @@ function App() {
                                                 pulseControl(`schulte-${n}`);
                                                 const isCorrectClick = n === schulte.next;
                                                 recordAttempt(isCorrectClick);
+                                                playSound(isCorrectClick ? 'success' : 'error');
                                                 // 只有点击“下一个正确数字”时才触发逻辑
                                                 if (isCorrectClick) {
                                                     if (currentIndex >= schulteSequence.length - 1) {
@@ -2410,7 +2669,10 @@ function App() {
 
                                 {/* --- 新增：无惩罚刷新按钮 --- */}
                                 <button
-                                    onClick={() => initGameCore('setgame')}
+                                    onClick={() => {
+                                        playSound('tap');
+                                        initGameCore('setgame');
+                                    }}
                                     className="flex items-center gap-2 mt-4 px-8 py-3 bg-white border border-slate-200 text-slate-400 rounded-2xl text-xs font-bold active:scale-95 transition-all shadow-sm"
                                 >
                                     <Icon name="refresh-cw" className="w-3.5 h-3.5" />
@@ -2465,7 +2727,10 @@ function App() {
                                 <div className="neuron-controls flex-shrink-0 w-full max-w-sm mt-3 bg-white rounded-[1.6rem] border border-indigo-100 shadow-sm p-3">
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => setNeuronCount(p => ({ ...p, currentCount: Math.max(0, p.currentCount - 1) }))}
+                                            onClick={() => {
+                                                playSound('tap');
+                                                setNeuronCount(p => ({ ...p, currentCount: Math.max(0, p.currentCount - 1) }));
+                                            }}
                                             className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl font-bold border border-indigo-100 active:scale-95 transition-transform flex items-center justify-center"
                                         >
                                             <Icon name="minus" className="w-5 h-5" />
@@ -2475,7 +2740,10 @@ function App() {
                                             <div className="text-3xl font-black font-mono leading-none">{neuronCount.currentCount}</div>
                                         </div>
                                         <button
-                                            onClick={() => setNeuronCount(p => ({ ...p, currentCount: p.currentCount + 1 }))}
+                                            onClick={() => {
+                                                playSound('tap');
+                                                setNeuronCount(p => ({ ...p, currentCount: p.currentCount + 1 }));
+                                            }}
                                             className="w-14 h-14 bg-indigo-600 text-white rounded-2xl font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center"
                                         >
                                             <Icon name="plus" className="w-6 h-6" />
@@ -2484,7 +2752,10 @@ function App() {
 
                                     <div className="grid grid-cols-[1fr_2fr] gap-2 mt-2">
                                         <button
-                                            onClick={() => setNeuronCount(p => ({ ...p, currentCount: 0 }))}
+                                            onClick={() => {
+                                                playSound('tap');
+                                                setNeuronCount(p => ({ ...p, currentCount: 0 }));
+                                            }}
                                             className="h-11 bg-indigo-50 text-indigo-500 rounded-[1.1rem] font-bold border border-indigo-100 active:scale-95 transition-transform flex items-center justify-center gap-1 text-xs"
                                         >
                                             <Icon name="rotate-ccw" className="w-4 h-4" /> {ui.reset}
@@ -2526,13 +2797,14 @@ function App() {
                     : 0;
                 const resultDuration = lastRunStats?.durationSeconds || 0;
                 const showCompletionTime = lastRunStats?.task === 'schulte';
+                const resultPresentation = getResultPresentation({ isDailyResult, resultAccuracy });
                 return (
                     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm ${isDailyResult ? 'bg-emerald-50 text-emerald-500' : 'bg-indigo-50 text-indigo-500'}`}>
-                            <Icon name={isDailyResult ? 'badge-check' : 'sparkles'} className="w-10 h-10" />
+                        <div className={`result-icon-orb ${resultPresentation.className}`}>
+                            <Icon name={resultPresentation.icon} className="w-10 h-10" />
                         </div>
                         <div className="text-[10px] font-black brand-text text-slate-400 mb-1">{isDailyResult ? ui.dailyFinishedTitle : ui.resultTitle}</div>
-                        <div className={`text-6xl font-black mb-6 font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{lastScore}</div>
+                        <div className={`result-score-counter text-6xl font-black mb-6 font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{animatedScore}</div>
                         <div className={`text-xl font-black mb-1 ${isDailyResult ? 'text-emerald-600' : feedback.color}`}>{isDailyResult ? `${ui.dailyStreak} ${dailyStreak} ${ui.dailyDays}` : feedback.label}</div>
                         <div className="text-xs text-slate-500 mb-4 font-medium leading-relaxed max-w-[240px]">{isDailyResult ? ui.dailyFinishedSub : feedback.sub}</div>
                         <div className="result-metrics-grid w-full max-w-sm mb-6">
@@ -2555,7 +2827,7 @@ function App() {
                             </div>
                         )}
                         {!isDailyResult && <div className="mb-8" />}
-                        <button onClick={() => setView('home')} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
+                        <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
                     </div>
                 );
             })()}
