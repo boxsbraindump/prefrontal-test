@@ -79,12 +79,12 @@ const UI_TEXT = {
         dailyFinishedSub: "今日已点亮，明天回来保持火苗。",
         dailyTomorrow: "明天解锁新挑战",
         dailyWeeklyGoal: "本周目标",
-        dailyWeeklyDone: "本周专注徽章已点亮",
+        dailyWeeklyDone: "本周徽章已点亮",
+        dailyWeeklyReward: "5/5",
+        dailyWeeklyNext: "明天继续点亮下一格",
         dailyTomorrowPreview: "明日预告",
         dailyTomorrowLocked: "完成今日挑战后查看明日预告",
         dailyTomorrowPrefix: "明天",
-        dailySaveProgress: "本地保存中",
-        dailySaveProgressHint: "未来可同步到其他设备",
         dailySeeTomorrow: "明天见",
         dailyPracticeAgain: "再练一次",
         dailyCategories: {
@@ -163,12 +163,12 @@ const UI_TEXT = {
         dailyFinishedSub: "Today is lit. Come back tomorrow to keep the spark alive.",
         dailyTomorrow: "New challenge tomorrow",
         dailyWeeklyGoal: "Weekly goal",
-        dailyWeeklyDone: "Weekly focus badge lit",
+        dailyWeeklyDone: "Weekly badge lit",
+        dailyWeeklyReward: "5/5",
+        dailyWeeklyNext: "Light another tile tomorrow",
         dailyTomorrowPreview: "Tomorrow preview",
         dailyTomorrowLocked: "Finish today to reveal tomorrow",
         dailyTomorrowPrefix: "Tomorrow",
-        dailySaveProgress: "Saved locally",
-        dailySaveProgressHint: "Sync to other devices later",
         dailySeeTomorrow: "See you tomorrow",
         dailyPracticeAgain: "Practice again",
         dailyCategories: {
@@ -296,6 +296,8 @@ const COLOR_LABELS = [
     { key: 'green', zh: '绿', en: 'Green', val: '#10B981' },
     { key: 'yellow', zh: '黄', en: 'Yellow', val: '#F59E0B' }
 ];
+
+const SET_FILL_LEVELS = [1, 0.55, 0.22];
 
 const RETENTION_STORAGE_KEY = 'prefrontal_lab_retention_v1';
 const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
@@ -827,7 +829,11 @@ function App() {
     const dailyRecord = dailyProgress.days?.[dailySpec.day] || {};
     const dailyStreak = getDailyStreak(dailyProgress.days, dailySpec.day);
     const dailyWeekDays = getWeeklyDailyDays(dailyProgress.days, dailySpec.day);
-    const dailyWeeklyCount = dailyWeekDays.filter(day => day.completed).length;
+    const isDailyRewardPreview = new URLSearchParams(window.location.search).has('dailyRewardPreview');
+    const previewDailyWeekDays = isDailyRewardPreview
+        ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
+        : dailyWeekDays;
+    const dailyWeeklyCount = previewDailyWeekDays.filter(day => day.completed).length;
     const dailyWeeklyGoalCount = Math.min(dailyWeeklyCount, WEEKLY_DAILY_GOAL);
     const dailyWeeklyGoalComplete = dailyWeeklyCount >= WEEKLY_DAILY_GOAL;
     const tomorrowSpec = getDailySpec(getOffsetDayKey(dailySpec.day, 1));
@@ -1549,27 +1555,15 @@ function App() {
                 solution.push({
                     color: logic.color === 0 ? colors[0] : colors[i],
                     shape: logic.shape === 0 ? shapes[0] : shapes[i],
-                    // 只有 true (全色) 和 false (半透)
-                    fill: logic.fill === 0 ? true : (i === 0 ? true : false) // 这里注意：两个分类无法实现“全异”，只能实现“全同”
+                    fillLevel: logic.fill === 0 ? SET_FILL_LEVELS[0] : SET_FILL_LEVELS[i]
                 });
-            }
-
-            /** 
-             * 逻辑修正：如果只有两个分类（全色/半透），在 3 张牌的情况下：
-             * - “全同”是可以实现的（全是实心 或 全是半透）。
-             * - “全异”逻辑上无法实现（因为只有两类，三张牌必有重复）。
-             * 因此，填充度的逻辑将自动退化为：必须全同。
-             **/
-            if (logic.fill === 1 && isHard) {
-                // 如果随机到了“全异”逻辑，由于只有两类，我们强制让解在填充度上“全同”但其他维度“全异”
-                solution.forEach(s => s.fill = Math.random() > 0.5);
             }
 
             // 2. 生成干扰项 (6张)
             const fillers = Array.from({ length: 6 }, () => ({
                 shape: shapes[Math.floor(Math.random() * 3)],
                 color: colors[Math.floor(Math.random() * 3)],
-                fill: isHard ? Math.random() > 0.5 : true
+                fillLevel: isHard ? SET_FILL_LEVELS[Math.floor(Math.random() * SET_FILL_LEVELS.length)] : SET_FILL_LEVELS[0]
             }));
 
             const finalCards = [...solution, ...fillers]
@@ -1791,6 +1785,22 @@ function App() {
             flashError: false,
             duration: 220
         });
+    };
+
+    const getCurrentRunAnalytics = () => {
+        const stats = runStatsRef.current || {};
+        const durationSeconds = stats.startedAtMs
+            ? Math.max(1, Math.round((Date.now() - stats.startedAtMs) / 1000))
+            : 0;
+
+        return {
+            score,
+            attempts: stats.attempts || 0,
+            correct: stats.correct || 0,
+            incorrect: stats.incorrect || 0,
+            accuracy: stats.attempts ? Math.round(((stats.correct || 0) / stats.attempts) * 100) : 0,
+            durationSeconds
+        };
     };
 
     const getNeuronDistance = (a, b) => {
@@ -2203,18 +2213,33 @@ function App() {
                                         </div>
                                     </div>
 
-                                    <div className="daily-week-panel">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="text-[10px] font-black text-slate-400 brand-text">{ui.dailyWeek}</div>
-                                            <div className={`text-[10px] font-black ${dailyWeeklyGoalComplete ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                {dailyWeeklyGoalComplete ? ui.dailyWeeklyDone : `${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}
+                                    <div className={`daily-week-panel ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''}`}>
+                                        <div className="daily-week-header">
+                                            <div className="daily-week-heading">
+                                                <div>
+                                                    <div className="daily-week-kicker">{ui.dailyWeek}</div>
+                                                    <div className="daily-week-goal-main">{`${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
+                                                </div>
                                             </div>
+                                            {dailyWeeklyGoalComplete ? (
+                                                <div className="daily-week-badge">
+                                                    <span>
+                                                        <Icon name="flame" className="w-4 h-4" />
+                                                    </span>
+                                                    <div>
+                                                        <strong>{ui.dailyWeeklyDone}</strong>
+                                                        <small>{ui.dailyWeeklyReward}</small>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="daily-week-goal-text">{`${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
+                                            )}
                                         </div>
                                         <div className="daily-week-progress" aria-hidden="true">
                                             <div style={{ width: `${Math.min(100, (dailyWeeklyGoalCount / WEEKLY_DAILY_GOAL) * 100)}%` }} />
                                         </div>
                                         <div className="daily-week-row">
-                                            {dailyWeekDays.map(day => (
+                                            {previewDailyWeekDays.map(day => (
                                                 <div key={day.day} className="daily-week-item">
                                                     <div className={`daily-week-dot ${day.completed ? 'is-complete' : ''} ${day.isToday ? 'is-today' : ''}`}>
                                                         {day.completed ? <Icon name="check" className="w-3.5 h-3.5" /> : ''}
@@ -2242,12 +2267,6 @@ function App() {
                                         {dailyRecord.completed && (
                                             <div className="daily-tomorrow-chip">{tomorrowTheme.title}</div>
                                         )}
-                                    </div>
-
-                                    <div className="daily-save-row">
-                                        <Icon name="cloud" className="w-3.5 h-3.5" />
-                                        <span>{ui.dailySaveProgress}</span>
-                                        <small>{ui.dailySaveProgressHint}</small>
                                     </div>
 
                                     <button
@@ -2540,6 +2559,7 @@ function App() {
                                         sessionId: sessionIdRef.current,
                                         task: currentRunRef.current.task,
                                         mode,
+                                        ...getCurrentRunAnalytics(),
                                         dailyChallengeId: currentRunRef.current.dailyChallengeId || null,
                                         dailyInstanceId: currentRunRef.current.dailyInstanceId || null,
                                         dailyTask: currentRunRef.current.dailyTask || null,
@@ -2700,7 +2720,7 @@ function App() {
 
                                                     const isColorMatch = checkProp(selectedCards[0].color, selectedCards[1].color, selectedCards[2].color);
                                                     const isShapeMatch = checkProp(selectedCards[0].shape, selectedCards[1].shape, selectedCards[2].shape);
-                                                    const isFillMatch = checkProp(selectedCards[0].fill, selectedCards[1].fill, selectedCards[2].fill);
+                                                    const isFillMatch = checkProp(selectedCards[0].fillLevel, selectedCards[1].fillLevel, selectedCards[2].fillLevel);
 
                                                     if (isColorMatch && isShapeMatch && isFillMatch) {
                                                         setSetGame(p => ({ ...p, selected: newSel, successIds: newSel }));
@@ -2739,7 +2759,7 @@ function App() {
                                                         : 'border-slate-100 bg-white shadow-sm'
                                                 }`}
                                         >
-                                            <div style={{ color: card.color }} className={card.fill ? 'opacity-100' : 'opacity-30'}>
+                                            <div style={{ color: card.color, opacity: card.fillLevel || 1 }}>
                                                 <Icon name={card.shape} className="w-10 h-10" />
                                             </div>
                                         </button>
@@ -2901,9 +2921,18 @@ function App() {
                             </div>
                         </div>
                         {isDailyResult && (
-                            <div className="daily-result-momentum">
+                            <div className={`daily-result-momentum ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''}`}>
+                                {dailyWeeklyGoalComplete && (
+                                    <div className="daily-result-reward">
+                                        <span><Icon name="flame" className="w-4 h-4" /></span>
+                                        <div>
+                                            <strong>{ui.dailyWeeklyDone}</strong>
+                                            <small>{ui.dailyWeeklyNext}</small>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="daily-result-row">
-                                    <span>{dailyWeeklyGoalComplete ? ui.dailyWeeklyDone : ui.dailyWeeklyGoal}</span>
+                                    <span>{ui.dailyWeeklyGoal}</span>
                                     <strong>{dailyWeeklyGoalCount}/{WEEKLY_DAILY_GOAL}</strong>
                                 </div>
                                 <div className="daily-result-row">

@@ -573,6 +573,98 @@ body.is-app-scrollable .app-shell {
     padding: 12px;
 }
 
+.daily-week-panel.is-rewarded {
+    border-color: #f1f5f9;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.06);
+}
+
+.daily-week-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.daily-week-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.daily-week-kicker {
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.daily-week-goal-main {
+    margin-top: 2px;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 950;
+    line-height: 1.15;
+}
+
+.daily-week-goal-text {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 950;
+    text-align: right;
+}
+
+.daily-week-badge {
+    min-width: 104px;
+    padding: 6px 8px 6px 6px;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #fff7ed, #ffffff);
+    color: #c2410c;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 7px;
+    flex: 0 0 auto;
+    box-shadow: 0 8px 18px rgba(249, 115, 22, 0.1);
+}
+
+.daily-week-badge > span {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #f97316;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.22);
+}
+
+.daily-week-badge strong,
+.daily-week-badge small {
+    display: block;
+}
+
+.daily-week-badge strong {
+    color: #c2410c;
+    font-size: 10px;
+    font-weight: 950;
+    line-height: 1.05;
+    white-space: nowrap;
+}
+
+.daily-week-badge small {
+    margin-top: 2px;
+    color: #f97316;
+    font-size: 9px;
+    font-weight: 950;
+    line-height: 1;
+}
+
 .daily-week-progress {
     height: 6px;
     overflow: hidden;
@@ -586,6 +678,14 @@ body.is-app-scrollable .app-shell {
     border-radius: inherit;
     background: linear-gradient(90deg, #10b981, #34d399);
     transition: width 260ms ease;
+}
+
+.daily-week-panel.is-rewarded .daily-week-progress {
+    background: #f1f5f9;
+}
+
+.daily-week-panel.is-rewarded .daily-week-progress > div {
+    background: linear-gradient(90deg, #fb923c, #f59e0b);
 }
 
 .daily-week-row {
@@ -618,10 +718,19 @@ body.is-app-scrollable .app-shell {
     background: #10b981;
 }
 
+.daily-week-panel.is-rewarded .daily-week-dot.is-complete {
+    border-color: #fb923c;
+    background: #fb923c;
+}
+
 .daily-week-dot.is-today {
     border-width: 2px;
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
     animation: today-pulse 1.8s ease-in-out infinite;
+}
+
+.daily-week-panel.is-rewarded .daily-week-dot.is-today {
+    box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.18);
 }
 
 .daily-week-label {
@@ -675,23 +784,6 @@ body.is-app-scrollable .app-shell {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.daily-save-row {
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    color: #94a3b8;
-    font-size: 10px;
-    font-weight: 900;
-}
-
-.daily-save-row small {
-    color: #cbd5e1;
-    font-size: 10px;
-    font-weight: 800;
 }
 
 .daily-start-button {
@@ -840,6 +932,56 @@ body.is-app-scrollable .app-shell {
     border: 1px solid #bbf7d0;
     border-radius: 20px;
     background: linear-gradient(135deg, #ffffff, #f0fdf4);
+}
+
+.daily-result-momentum.is-rewarded {
+    border-color: #bbf7d0;
+    background: linear-gradient(135deg, #ffffff, #f0fdf4);
+}
+
+.daily-result-reward {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 9px;
+    border: 1px solid #fed7aa;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #fff7ed, #ffffff);
+    text-align: left;
+}
+
+.daily-result-reward > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: #f97316;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.22);
+}
+
+.daily-result-reward strong,
+.daily-result-reward small {
+    display: block;
+}
+
+.daily-result-reward strong {
+    color: #c2410c;
+    font-size: 12px;
+    font-weight: 950;
+    line-height: 1.15;
+}
+
+.daily-result-reward small {
+    margin-top: 3px;
+    color: #f97316;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1.2;
 }
 
 .daily-result-row {
