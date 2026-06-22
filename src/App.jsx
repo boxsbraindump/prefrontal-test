@@ -808,6 +808,7 @@ function App() {
     const [lang, setLang] = useState(() => getInitialLanguage());
     const [retentionData, setRetentionData] = useState(() => readRetentionData());
     const [dailyProgress, setDailyProgress] = useState(() => readDailyProgress());
+    const [dailyWeekAdvance, setDailyWeekAdvance] = useState(null);
     const [cloudSummary, setCloudSummary] = useState(null);
     const [cloudStatus, setCloudStatus] = useState('idle');
     const [ownerToken, setOwnerToken] = useState(() => localStorage.getItem(OWNER_TOKEN_KEY) || '');
@@ -829,13 +830,26 @@ function App() {
     const dailyRecord = dailyProgress.days?.[dailySpec.day] || {};
     const dailyStreak = getDailyStreak(dailyProgress.days, dailySpec.day);
     const dailyWeekDays = getWeeklyDailyDays(dailyProgress.days, dailySpec.day);
-    const isDailyRewardPreview = new URLSearchParams(window.location.search).has('dailyRewardPreview');
+    const dailyPreviewParams = new URLSearchParams(window.location.search);
+    const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
+    const isDailyCelebratePreview = dailyPreviewParams.has('dailyCelebratePreview');
     const previewDailyWeekDays = isDailyRewardPreview
         ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
         : dailyWeekDays;
     const dailyWeeklyCount = previewDailyWeekDays.filter(day => day.completed).length;
     const dailyWeeklyGoalCount = Math.min(dailyWeeklyCount, WEEKLY_DAILY_GOAL);
     const dailyWeeklyGoalComplete = dailyWeeklyCount >= WEEKLY_DAILY_GOAL;
+    const dailyWeeklyProgress = Math.min(100, (dailyWeeklyGoalCount / WEEKLY_DAILY_GOAL) * 100);
+    const activeDailyWeekAdvance = (dailyWeekAdvance?.day === dailySpec.day && dailyWeekAdvance.to === dailyWeeklyGoalCount) || isDailyCelebratePreview;
+    const dailyWeekAdvanceFrom = isDailyCelebratePreview ? WEEKLY_DAILY_GOAL - 1 : (dailyWeekAdvance?.from ?? dailyWeeklyGoalCount);
+    const dailyWeekAdvanceTo = isDailyCelebratePreview ? WEEKLY_DAILY_GOAL : (dailyWeekAdvance?.to ?? dailyWeeklyGoalCount);
+    const shouldCelebrateWeeklyGoal = activeDailyWeekAdvance && dailyWeekAdvanceTo >= WEEKLY_DAILY_GOAL;
+    const dailyWeekProgressStyle = activeDailyWeekAdvance
+        ? {
+            '--daily-week-from': `${Math.min(100, (dailyWeekAdvanceFrom / WEEKLY_DAILY_GOAL) * 100)}%`,
+            '--daily-week-to': `${Math.min(100, (dailyWeekAdvanceTo / WEEKLY_DAILY_GOAL) * 100)}%`
+        }
+        : undefined;
     const tomorrowSpec = getDailySpec(getOffsetDayKey(dailySpec.day, 1));
     const tomorrowCategory = ui.dailyCategories?.[tomorrowSpec.task] || (isEnglish ? TASK_TRANSLATIONS[tomorrowSpec.task]?.title : TASK_DATA[tomorrowSpec.task]?.title) || tomorrowSpec.task;
     const dailyTheme = dailySpec.theme?.[lang] || dailySpec.theme?.en;
@@ -1888,6 +1902,12 @@ function App() {
         if (isDaily) {
             const day = currentRunRef.current?.dailyDay || getDayKey();
             const dailyTask = currentRunRef.current?.dailyTask || view;
+            const previousDailyDays = dailyProgress.days || {};
+            const previousDayRecord = previousDailyDays[day] || {};
+            const previousWeeklyGoalCount = Math.min(
+                getWeeklyDailyDays(previousDailyDays, day).filter(weekDay => weekDay.completed).length,
+                WEEKLY_DAILY_GOAL
+            );
             setDailyProgress(prev => {
                 const dayRecord = prev.days?.[day] || {};
                 const nextData = {
@@ -1913,6 +1933,14 @@ function App() {
                 writeDailyProgress(nextData);
                 return nextData;
             });
+            if (!previousDayRecord.completed) {
+                setDailyWeekAdvance({
+                    day,
+                    from: previousWeeklyGoalCount,
+                    to: Math.min(previousWeeklyGoalCount + 1, WEEKLY_DAILY_GOAL),
+                    key: Date.now()
+                });
+            }
         }
         currentRunRef.current = null;
 
@@ -2005,6 +2033,16 @@ function App() {
             }
         };
     }, [view, lastScore]);
+
+    useEffect(() => {
+        if (!dailyWeekAdvance || view !== 'home' || mode !== 'daily') return undefined;
+        const clearDelay = dailyWeekAdvance.to >= WEEKLY_DAILY_GOAL ? 1800 : 1350;
+        const timer = setTimeout(() => {
+            setDailyWeekAdvance(null);
+        }, clearDelay);
+
+        return () => clearTimeout(timer);
+    }, [dailyWeekAdvance, view, mode]);
 
     useEffect(() => {
         if (neuronMoveTimer.current) {
@@ -2177,14 +2215,22 @@ function App() {
                                 data-analytics-label={GAME_CLICK_LABELS.daily}
                                 className="daily-challenge-card bg-white rounded-[1.8rem] border-2 border-emerald-100 shadow-md overflow-hidden"
                             >
-                                <div className="daily-card-hero p-5 text-white relative overflow-hidden">
+                                <div className={`daily-card-hero daily-theme-${dailySpec.task} p-5 text-white relative overflow-hidden`}>
+                                    <div className={`daily-hero-motif is-${dailySpec.task}`} aria-hidden="true">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
                                     <div className="relative z-10 flex items-start justify-between gap-4">
                                         <div className="min-w-0">
                                             <div className="text-[10px] font-black brand-text opacity-75">{ui.dailyTitle}</div>
                                             <div className="mt-1 text-2xl font-black leading-tight">{dailyTheme.title}</div>
                                             <div className="mt-1 text-xs font-extrabold opacity-95 leading-relaxed">{dailyTheme.subtitle}</div>
                                         </div>
-                                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur">
+                                        <div className="daily-hero-task-icon w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur">
                                             <Icon name={TASK_DATA[dailySpec.task].icon} className="w-6 h-6" />
                                         </div>
                                     </div>
@@ -2195,7 +2241,7 @@ function App() {
                                 <div className="p-5">
                                     <div className="daily-goal-box">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+                                            <div className="daily-task-icon w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
                                                 <Icon name="target" className="w-5 h-5" />
                                             </div>
                                             <div className="min-w-0">
@@ -2213,7 +2259,15 @@ function App() {
                                         </div>
                                     </div>
 
-                                    <div className={`daily-week-panel ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''}`}>
+                                    <div
+                                        className={`daily-week-panel ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''} ${activeDailyWeekAdvance ? 'is-advancing' : ''} ${shouldCelebrateWeeklyGoal ? 'is-celebrating' : ''}`}
+                                        style={dailyWeekProgressStyle}
+                                    >
+                                        {shouldCelebrateWeeklyGoal && (
+                                            <div className="daily-week-confetti" aria-hidden="true">
+                                                {Array.from({ length: 24 }, (_, index) => <span key={index}></span>)}
+                                            </div>
+                                        )}
                                         <div className="daily-week-header">
                                             <div className="daily-week-heading">
                                                 <div>
@@ -2221,22 +2275,10 @@ function App() {
                                                     <div className="daily-week-goal-main">{`${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
                                                 </div>
                                             </div>
-                                            {dailyWeeklyGoalComplete ? (
-                                                <div className="daily-week-badge">
-                                                    <span>
-                                                        <Icon name="flame" className="w-4 h-4" />
-                                                    </span>
-                                                    <div>
-                                                        <strong>{ui.dailyWeeklyDone}</strong>
-                                                        <small>{ui.dailyWeeklyReward}</small>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="daily-week-goal-text">{`${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
-                                            )}
+                                            <div className="daily-week-goal-text">{`${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
                                         </div>
                                         <div className="daily-week-progress" aria-hidden="true">
-                                            <div style={{ width: `${Math.min(100, (dailyWeeklyGoalCount / WEEKLY_DAILY_GOAL) * 100)}%` }} />
+                                            <div style={{ width: activeDailyWeekAdvance ? 'var(--daily-week-to)' : `${dailyWeeklyProgress}%` }} />
                                         </div>
                                         <div className="daily-week-row">
                                             {previewDailyWeekDays.map(day => (
@@ -2944,7 +2986,7 @@ function App() {
                         {!isDailyResult && <div className="mb-8" />}
                         {isDailyResult ? (
                             <div className="w-full max-w-sm flex flex-col gap-3">
-                                <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.dailySeeTomorrow}</button>
+                                <button onClick={() => { playSound('tap'); setMode('daily'); setView('home'); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.dailySeeTomorrow}</button>
                                 <button onClick={() => { playSound('tap'); startChallenge(dailySpec.task); }} className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black">{ui.dailyPracticeAgain}</button>
                             </div>
                         ) : (

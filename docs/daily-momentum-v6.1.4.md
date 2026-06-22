@@ -19,8 +19,12 @@ Started locally on 2026-06-18. Not pushed to test or production yet.
 Implemented in the local preview:
 
 - Weekly Daily goal: 5 out of 7 days, with compact progress bar.
+- Weekly reward state: reaching 5/7 keeps the progress system in the Daily green palette.
+- Weekly progress motion: after completing Daily and returning home, the weekly goal bar animates from the previous count to the new count.
+- Weekly goal celebration: if that completion reaches 5/5, the bar fills to 100% and triggers a short green confetti burst.
+- Preview mode should stay static; progress motion is a completion reward, not a decoration every time users open Daily.
 - Tomorrow preview: locked before completion, revealed after Daily completion.
-- Soft save-progress cue: local save now, future sync later.
+- Save-progress cue is intentionally hidden for now to avoid implying cloud sync before login/sync exists.
 - Daily completion result actions: primary `See you tomorrow`, secondary `Practice again`.
 - Mobile scroll safety fix: Daily page can scroll on small screens so the CTA can sit above the bottom nav.
 
@@ -147,13 +151,17 @@ Suggested order:
 
 ### 5. Save Progress Entry, Not Full Login
 
-Add a soft "save progress" concept without building full login yet.
+Keep this as a product idea, but do not show it in the Daily card yet.
 
-Suggested wording:
+Reason:
 
-- `保存打卡记录`
-- `本地保存中`
-- `未来可同步到其他设备`
+- `Saved locally` can mislead players into thinking cross-device sync already exists.
+- Bring this back only when the app has a real save/sync entry point.
+
+Deferred wording:
+
+- Do not add save-progress copy to the Daily card in v6.1.4.
+- Revisit this when sync/login has a real entry point.
 
 Purpose:
 
@@ -324,12 +332,6 @@ Daily completed:
 - `明天见`
 - `再练一次`
 
-Save progress:
-
-- `保存打卡记录`
-- `本地保存中`
-- `未来可同步到其他设备`
-
 ### English
 
 Daily not completed:
@@ -348,12 +350,6 @@ Daily completed:
 - `Tomorrow: memory challenge`
 - `See you tomorrow`
 - `Practice again`
-
-Save progress:
-
-- `Save progress`
-- `Saved locally`
-- `Sync to other devices later`
 
 ## Success Metrics
 
