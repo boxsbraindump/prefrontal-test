@@ -33,7 +33,7 @@ const LatexFmt = ({ text }) => {
 
 const UI_TEXT = {
     zh: {
-        appTitle: "前额叶实验室 6.1.4",
+        appTitle: "前额叶实验室 6.1.5",
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
@@ -47,7 +47,7 @@ const UI_TEXT = {
         arenaShortTitle: "全能竞技",
         arenaSubtitle: "混合：舒尔特方格 / Stroop反应 / 快速SET / N-Back / 神经元计数",
         updateTitle: "实验室更新公告",
-        updateVersion: "Version 6.1.4",
+        updateVersion: "Version 6.1.5",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
         navTrain: "训练",
@@ -117,7 +117,7 @@ const UI_TEXT = {
         backHome: "返回大厅"
     },
     en: {
-        appTitle: "Prefrontal Lab 6.1.4",
+        appTitle: "Prefrontal Lab 6.1.5",
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
@@ -131,7 +131,7 @@ const UI_TEXT = {
         arenaShortTitle: "Arena",
         arenaSubtitle: "Mixed training: Schulte Grid / Stroop / SET / N-Back / Neuron Counting",
         updateTitle: "Lab Update",
-        updateVersion: "Version 6.1.4",
+        updateVersion: "Version 6.1.5",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
         navTrain: "Train",
@@ -204,20 +204,16 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "每日挑战升级「每日动力」：新增本周目标进度条，一周点亮 5 天即达成。",
-        "完成挑战后进度条会动画推进，集满本周目标触发庆祝特效。",
-        "新增「明日预告」：完成今日挑战后解锁明天的挑战方向。",
-        "全新音效反馈：点击、答对、答错都有声音，可在设置中开关。",
-        "结算页新增分数滚动动画。",
-        "加载速度大幅提升，打开更快。"
+        "SET 与 N-Back 新增新手引导：第一次玩先教规则、带你上手。",
+        "SET 用三个示例讲清：颜色全同 / 形状全同 / 全不同，都是一组。",
+        "N-Back 新手前几题带对照、答错不扣分，先找手感再上难度。",
+        "进阶 SET 透明度从三档简化为两档，更好辨认。"
     ],
     en: [
-        "Daily Challenge gets a “Daily Momentum” upgrade with a new weekly goal bar — light up 5 of 7 days.",
-        "Finishing a challenge animates your weekly progress, with a celebration when you hit the goal.",
-        "New “Tomorrow preview”: finish today to reveal tomorrow's challenge type.",
-        "New sound feedback for taps, correct, and wrong answers (toggle in Settings).",
-        "Added a score count-up animation on the result screen.",
-        "Much faster loading — the app opens noticeably quicker."
+        "New first-play guides for SET and N-Back.",
+        "SET now teaches with three examples: same color / same shape / all different.",
+        "N-Back eases newcomers in — the first rounds show the reference, no penalty.",
+        "Advanced SET opacity simplified from three levels to two for clarity."
     ]
 };
 
@@ -790,6 +786,17 @@ const buildRetentionSummary = (data) => {
 function App() {
     const DEFAULT_TASK_BESTS = { schulte: 0, stroop: 0, nback: 0, setgame: 0, neuroncount: 0 };
     const urlParams = new URLSearchParams(window.location.search);
+    // 归因:接住 ?from= 参数(小红书链接 UTM)。首次带 from 到访即记住(首触归因),之后沿用。
+    const acquisitionSource = (() => {
+        try {
+            const fromParam = urlParams.get('from');
+            if (fromParam) {
+                if (!localStorage.getItem('pfl_acq_src')) localStorage.setItem('pfl_acq_src', fromParam.slice(0, 60));
+                return fromParam.slice(0, 60);
+            }
+            return localStorage.getItem('pfl_acq_src') || null;
+        } catch (e) { return null; }
+    })();
     const [isOwner, setIsOwner] = useState(() => urlParams.get('owner') === '1');
     const [view, setView] = useState(() => (urlParams.has('analytics') && urlParams.get('owner') === '1') ? 'analytics' : 'home');
     const [mode, setMode] = useState('normal');
@@ -1047,13 +1054,13 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.4_update');
+        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.5_update');
     });
 
     const closeUpdateNote = () => {
         playSound('tap');
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
-        localStorage.setItem('prefrontal_lab_v6.1.4_update', 'true');
+        localStorage.setItem('prefrontal_lab_v6.1.5_update', 'true');
         setShowUpdateNote(false);
     };
 
@@ -1179,7 +1186,7 @@ function App() {
     useEffect(() => {
         recordRetention('session_start', {
             sessionId: sessionIdRef.current,
-            source: document.referrer ? 'referral' : 'direct'
+            source: acquisitionSource || (document.referrer ? 'referral' : 'direct')
         });
 
         const markSessionEnd = () => {
