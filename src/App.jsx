@@ -33,7 +33,7 @@ const LatexFmt = ({ text }) => {
 
 const UI_TEXT = {
     zh: {
-        appTitle: "前额叶实验室 6.1.3",
+        appTitle: "前额叶实验室 6.1.4",
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
@@ -47,7 +47,7 @@ const UI_TEXT = {
         arenaShortTitle: "全能竞技",
         arenaSubtitle: "混合：舒尔特方格 / Stroop反应 / 快速SET / N-Back / 神经元计数",
         updateTitle: "实验室更新公告",
-        updateVersion: "Version 6.1.3",
+        updateVersion: "Version 6.1.4",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
         navTrain: "训练",
@@ -117,7 +117,7 @@ const UI_TEXT = {
         backHome: "返回大厅"
     },
     en: {
-        appTitle: "Prefrontal Lab 6.1.3",
+        appTitle: "Prefrontal Lab 6.1.4",
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
@@ -131,7 +131,7 @@ const UI_TEXT = {
         arenaShortTitle: "Arena",
         arenaSubtitle: "Mixed training: Schulte Grid / Stroop / SET / N-Back / Neuron Counting",
         updateTitle: "Lab Update",
-        updateVersion: "Version 6.1.3",
+        updateVersion: "Version 6.1.4",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
         navTrain: "Train",
@@ -204,24 +204,20 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "修复了 Stroop 题目文字与字体颜色连续完全重复的问题。",
-        "统一舒尔特、Stroop、N-Back 与 SET 的点击反馈。",
-        "N-Back 数字切换加入轻量 Pop-up 动效。",
-        "N-Back 增加当前题号。",
-        "N-Back 初始数字标记为“记忆阶段”。",
-        "新增正确率、答对次数与错误次数统计。",
-        "新增舒尔特完成用时。",
-        "修复了手机端无法滑动的问题。"
+        "每日挑战升级「每日动力」：新增本周目标进度条，一周点亮 5 天即达成。",
+        "完成挑战后进度条会动画推进，集满本周目标触发庆祝特效。",
+        "新增「明日预告」：完成今日挑战后解锁明天的挑战方向。",
+        "全新音效反馈：点击、答对、答错都有声音，可在设置中开关。",
+        "结算页新增分数滚动动画。",
+        "加载速度大幅提升，打开更快。"
     ],
     en: [
-        "Fixed consecutive repeats of identical Stroop words and font colors.",
-        "Unified tap feedback across Schulte, Stroop, N-Back, and SET.",
-        "Added a lightweight pop-up transition between N-Back numbers.",
-        "Added the current round number to N-Back.",
-        "N-Back opening numbers are now labeled as the memory stage.",
-        "Added accuracy, correct-answer, and mistake statistics.",
-        "Added Schulte completion time.",
-        "Fixed scrolling on mobile devices."
+        "Daily Challenge gets a “Daily Momentum” upgrade with a new weekly goal bar — light up 5 of 7 days.",
+        "Finishing a challenge animates your weekly progress, with a celebration when you hit the goal.",
+        "New “Tomorrow preview”: finish today to reveal tomorrow's challenge type.",
+        "New sound feedback for taps, correct, and wrong answers (toggle in Settings).",
+        "Added a score count-up animation on the result screen.",
+        "Much faster loading — the app opens noticeably quicker."
     ]
 };
 
@@ -297,7 +293,7 @@ const COLOR_LABELS = [
     { key: 'yellow', zh: '黄', en: 'Yellow', val: '#F59E0B' }
 ];
 
-const SET_FILL_LEVELS = [1, 0.55, 0.22];
+const SET_FILL_LEVELS = [1, 0.4];
 
 const RETENTION_STORAGE_KEY = 'prefrontal_lab_retention_v1';
 const RETENTION_VISITOR_KEY = 'prefrontal_lab_visitor_id';
@@ -1051,13 +1047,13 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.3_update');
+        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.4_update');
     });
 
     const closeUpdateNote = () => {
         playSound('tap');
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
-        localStorage.setItem('prefrontal_lab_v6.1.3_update', 'true');
+        localStorage.setItem('prefrontal_lab_v6.1.4_update', 'true');
         setShowUpdateNote(false);
     };
 
@@ -1408,6 +1404,8 @@ function App() {
     const [neuronCount, setNeuronCount] = useState({ items: [], target: {}, targetCount: 0, currentCount: 0 });
     const [controlPulse, setControlPulse] = useState(null);
     const nbackSeq = useRef([]);
+    const nbackWarmupRef = useRef(false);
+    const setgameWarmupRef = useRef(false);
     const feedbackTimer = useRef(null);
     const controlPulseTimer = useRef(null);
     const neuronMoveTimer = useRef(null);
@@ -1557,19 +1555,26 @@ function App() {
             const logic = {
                 color: Math.floor(Math.random() * 2),
                 shape: Math.floor(Math.random() * 2),
-                fill: isHard ? Math.floor(Math.random() * 2) : 0 // 基础模式强制全同
+                fill: 0 // 只有两档透明度,3 张凑不出"全不同",所以透明度只用"全同"
             };
 
             // 强制至少有一个属性是“全异”，否则三张牌长得一模一样
             if (Object.values(logic).every(v => v === 0)) logic.shape = 1;
 
-            // 1. 生成正确解 (3张)
+            // 首玩带教三板:①颜色全同(同色不同形) ②图形全同(同形不同色) ③全异(都不同)
+            if (setgameWarmupRef.current === 3) { logic.color = 0; logic.shape = 1; logic.fill = 0; }
+            else if (setgameWarmupRef.current === 2) { logic.color = 1; logic.shape = 0; logic.fill = 0; }
+            else if (setgameWarmupRef.current === 1) { logic.color = 1; logic.shape = 1; logic.fill = 0; }
+
+            // 1. 生成正确解 (3张)。进阶:三张共用一个随机透明度(实心或半透明);基础:恒为实心
+            const solutionFill = isHard ? SET_FILL_LEVELS[Math.floor(Math.random() * SET_FILL_LEVELS.length)] : SET_FILL_LEVELS[0];
             let solution = [];
             for (let i = 0; i < 3; i++) {
                 solution.push({
                     color: logic.color === 0 ? colors[0] : colors[i],
                     shape: logic.shape === 0 ? shapes[0] : shapes[i],
-                    fillLevel: logic.fill === 0 ? SET_FILL_LEVELS[0] : SET_FILL_LEVELS[i]
+                    fillLevel: solutionFill,
+                    isSolution: true
                 });
             }
 
@@ -1577,7 +1582,8 @@ function App() {
             const fillers = Array.from({ length: 6 }, () => ({
                 shape: shapes[Math.floor(Math.random() * 3)],
                 color: colors[Math.floor(Math.random() * 3)],
-                fillLevel: isHard ? SET_FILL_LEVELS[Math.floor(Math.random() * SET_FILL_LEVELS.length)] : SET_FILL_LEVELS[0]
+                fillLevel: isHard ? SET_FILL_LEVELS[Math.floor(Math.random() * SET_FILL_LEVELS.length)] : SET_FILL_LEVELS[0],
+                isSolution: false
             }));
 
             const finalCards = [...solution, ...fillers]
@@ -1655,12 +1661,43 @@ function App() {
     };
 
     const startChallenge = (type) => {
+        // 首玩引导:SET / N-Back 这类需要先懂规则的游戏,第一次玩先弹规则卡(竞技/每日不拦)。
+        // storage 不可用时默认放行,避免卡住开局。
+        if (type && (type === 'setgame' || type === 'nback') && mode !== 'comp' && mode !== 'daily') {
+            let rulesSeen = true;
+            try { rulesSeen = !!localStorage.getItem(`pfl_rules_seen_${type}`); } catch (e) { rulesSeen = true; }
+            if (!rulesSeen) {
+                playSound('tap');
+                setShowInfo(type);
+                return;
+            }
+        }
         playSound('start');
         clearAnswerFeedback();
         setScore(0);
         nbackSeq.current = [];
         const activeDailySpec = getDailySpec();
         const taskType = mode === 'daily' ? activeDailySpec.task : type;
+        // N-Back 首玩带教:新手第一局基础 N-Back,前 3 个答题轮做脚手架(露出上一个数字 + 不扣分)。
+        // 一次性,标记后永不再触发;进阶/竞技/每日不带教。storage 不可用时默认不带教。
+        if (taskType === 'nback' && mode !== 'comp' && mode !== 'daily' && !isChallengeDifficulty) {
+            let warmupDone = true;
+            try { warmupDone = !!localStorage.getItem('pfl_nback_warmup_done'); } catch (e) { warmupDone = true; }
+            nbackWarmupRef.current = !warmupDone;
+            if (!warmupDone) { try { localStorage.setItem('pfl_nback_warmup_done', '1'); } catch (e) { } }
+        } else {
+            nbackWarmupRef.current = false;
+        }
+        // SET 首玩带教:新手第一局基础 SET,第一板给一个高亮的清晰范例 + 不扣分,解出后转正常。
+        if (taskType === 'setgame' && mode !== 'comp' && mode !== 'daily') {
+            const setKey = isChallengeDifficulty ? 'pfl_setgame_warmup_done_hard' : 'pfl_setgame_warmup_done';
+            let setDone = true;
+            try { setDone = !!localStorage.getItem(setKey); } catch (e) { setDone = true; }
+            setgameWarmupRef.current = setDone ? 0 : 3; // 3=颜色全同, 2=图形全同, 1=全异, 0=转正常
+            if (!setDone) { try { localStorage.setItem(setKey, '1'); } catch (e) { } }
+        } else {
+            setgameWarmupRef.current = 0;
+        }
         const taskName = mode === 'comp' ? 'arena' : mode === 'daily' ? 'daily' : taskType;
         runStatsRef.current = {
             task: mode === 'comp' ? 'arena' : taskType,
@@ -1787,11 +1824,13 @@ function App() {
             initGameCore('nback');
             return;
         }
+        const nbackAnswerable = nback.roundNumber - (isChallengeDifficulty ? 2 : 1);
+        const isWarmup = nbackWarmupRef.current && !isChallengeDifficulty && nbackAnswerable >= 1 && nbackAnswerable <= 3;
         const isCorrect = answerIsMatch === nback.isMatch;
         showAnswerFeedback({
             correct: isCorrect,
             points: 30,
-            penalty: 10,
+            penalty: isWarmup ? 0 : 10,
             nextType: 'nback',
             target: answerIsMatch ? 'match' : 'different',
             advance: true,
@@ -1981,6 +2020,16 @@ function App() {
         };
     }, []);
 
+    // 测试用:URL 带 ?newbie 时清掉新手引导记录,让规则卡/带教重新出现
+    useEffect(() => {
+        try {
+            if (new URLSearchParams(window.location.search).has('newbie')) {
+                ['pfl_rules_seen_setgame', 'pfl_rules_seen_nback', 'pfl_nback_warmup_done', 'pfl_setgame_warmup_done', 'pfl_setgame_warmup_done_hard']
+                    .forEach(k => localStorage.removeItem(k));
+            }
+        } catch (e) { }
+    }, []);
+
     useEffect(() => {
         if (resultScoreFrame.current) {
             cancelAnimationFrame(resultScoreFrame.current);
@@ -2075,6 +2124,11 @@ function App() {
         }
         return () => clearInterval(timer);
     }, [timeLeft, view, isInfiniteMode]);
+
+    // N-Back 首玩带教:当前是否处于"露出上一张卡 + 不扣分"的热身答题轮(前 3 题)
+    const nbackAnswerableIndex = nback.roundNumber - (isChallengeDifficulty ? 2 : 1);
+    const isNbackWarmupRound = nbackWarmupRef.current && !isChallengeDifficulty && nback.isReady
+        && nbackAnswerableIndex >= 1 && nbackAnswerableIndex <= 3;
 
     return (
         <div className={`app-shell h-full flex flex-col relative ${isGameView ? 'overflow-hidden' : 'overflow-y-auto'} transition-colors duration-200 ${isError ? 'arena-flash' : 'bg-slate-50'} text-slate-900 select-none`}>
@@ -2580,7 +2634,7 @@ function App() {
                         <h2 className="text-xl font-black mb-1">{getTaskTitle(showInfo)}</h2>
                         <div className="text-[9px] font-bold text-slate-400 brand-text mb-6">{isEnglish ? ui.moduleLabel : TASK_DATA[showInfo].en}</div>
                         <div className="text-xs text-slate-600 leading-relaxed font-medium mb-8"><LatexFmt text={getTaskGuide(showInfo)} /></div>
-                        <button onClick={() => { startChallenge(showInfo); setShowInfo(null); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">{ui.startTraining}</button>
+                        <button onClick={() => { const t = showInfo; try { localStorage.setItem(`pfl_rules_seen_${t}`, '1'); } catch (e) { } setShowInfo(null); startChallenge(t); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">{ui.startTraining}</button>
                     </div>
                 </div>
             )}
@@ -2713,7 +2767,7 @@ function App() {
                                                 ? `Round ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)}`
                                                 : `第 ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)} 题`)}
                                     </div>
-                                    <div className="nback-prompt-stack">
+                                    <div className={`nback-prompt-stack ${isNbackWarmupRound ? 'is-warmup' : ''}`}>
                                         {nback.previous !== null && (
                                             <div className="nback-prompt-card nback-prompt-card-previous" aria-hidden="true">
                                                 {nback.previous}
@@ -2723,6 +2777,9 @@ function App() {
                                             {nback.current}
                                         </div>
                                     </div>
+                                    {isNbackWarmupRound && (
+                                        <div className="nback-warmup-hint">{isEnglish ? 'Same as the card on the left?' : '右边这个，和左边那个一样吗？'}</div>
+                                    )}
                                 </div>
                                 {nback.isReady ? (
                                     <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
@@ -2744,6 +2801,17 @@ function App() {
                         )}
                         {view === 'setgame' && (
                             <div className="setgame-layout flex flex-col items-center w-full animate-pop-center">
+                                {setgameWarmupRef.current > 0 && (
+                                    <div className="set-warmup-hint">{
+                                        (setgameWarmupRef.current === 3
+                                            ? (isEnglish ? 'Example 1 of 3 — same color, different shapes' : '示例 1/3:颜色相同、形状全不同')
+                                            : setgameWarmupRef.current === 2
+                                                ? (isEnglish ? 'Example 2 of 3 — same shape, different colors' : '示例 2/3:形状相同、颜色全不同')
+                                                : (isEnglish ? 'Example 3 of 3 — all different' : '示例 3/3:颜色、形状全都不同'))
+                                        + (isChallengeDifficulty ? (isEnglish ? ', same opacity' : '、透明度一致') : '')
+                                        + (isEnglish ? ' — still a set' : ' —— 也是一组')
+                                    }</div>
+                                )}
                                 {/* --- 游戏网格 --- */}
                                 <div className="setgame-grid grid grid-cols-3 gap-2 w-full max-w-sm">
                                     {setGame.cards.map(card => (
@@ -2765,6 +2833,7 @@ function App() {
                                                     const isFillMatch = checkProp(selectedCards[0].fillLevel, selectedCards[1].fillLevel, selectedCards[2].fillLevel);
 
                                                     if (isColorMatch && isShapeMatch && isFillMatch) {
+                                                        if (setgameWarmupRef.current > 0) setgameWarmupRef.current -= 1; // 解出一板,推进带教(2→1→0)
                                                         setSetGame(p => ({ ...p, selected: newSel, successIds: newSel }));
                                                         showAnswerFeedback({
                                                             correct: true,
@@ -2779,8 +2848,8 @@ function App() {
                                                         setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: newSel }));
                                                         showAnswerFeedback({
                                                             correct: false,
-                                                            penalty: 20,
-                                                            showPenalty: true,
+                                                            penalty: setgameWarmupRef.current ? 0 : 20,
+                                                            showPenalty: !setgameWarmupRef.current,
                                                             nextType: 'setgame',
                                                             target: `set-${card.id}`,
                                                             advance: false,
@@ -2792,7 +2861,7 @@ function App() {
                                                     setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: [] }));
                                                 }
                                             }}
-                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${controlPulse === `set-${card.id}` ? 'is-tap-pulsing' : ''} ${setGame.successIds?.includes(card.id)
+                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${controlPulse === `set-${card.id}` ? 'is-tap-pulsing' : ''} ${setgameWarmupRef.current > 0 && card.isSolution ? 'is-set-hint' : ''} ${setGame.successIds?.includes(card.id)
                                                 ? 'is-set-success'
                                                 : setGame.errorIds?.includes(card.id)
                                                     ? 'is-set-wrong'
