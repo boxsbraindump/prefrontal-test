@@ -509,6 +509,30 @@ const DAILY_CHALLENGES = [
             zh: { title: '神经风暴', subtitle: '在移动干扰中保持精确计数。', goal: '完成高干扰神经元计数挑战。' },
             en: { title: 'Neural Storm', subtitle: 'Keep counting precisely through moving distractions.', goal: 'Complete a high-distraction counting challenge.' }
         }
+    },
+    {
+        id: 'schulte-letters',
+        task: 'schulte',
+        variant: 'letters',
+        completion: 'finish-grid',
+        duration: 90,
+        ruleLabel: { zh: '完成目标', en: 'Goal clear' },
+        theme: {
+            zh: { title: '字母迷阵', subtitle: '把数字换成字母,重新校准你的搜索路径。', goal: '按 A 到 Y 的顺序完成字母舒尔特。' },
+            en: { title: 'Letter Maze', subtitle: 'Swap numbers for letters and recalibrate your scan.', goal: 'Clear the letter grid from A to Y.' }
+        }
+    },
+    {
+        id: 'schulte-grid6',
+        task: 'schulte',
+        variant: 'grid6',
+        completion: 'finish-grid',
+        duration: 120,
+        ruleLabel: { zh: '完成目标', en: 'Goal clear' },
+        theme: {
+            zh: { title: '扩容网格', subtitle: '6×6 更大的视野,更强的专注。', goal: '按 1 到 36 的顺序完成 6×6 舒尔特。' },
+            en: { title: 'Expanded Grid', subtitle: 'A bigger 6×6 field for wider focus.', goal: 'Clear the 6×6 grid from 1 to 36.' }
+        }
     }
 ];
 
@@ -520,13 +544,26 @@ const getDayKey = (date = new Date()) => {
 };
 
 const getDailyChallengeIndex = (day) => {
-    const weekday = new Date(`${day}T00:00:00`).getDay();
-    return (weekday + 6) % 7;
+    // 按日期循环整个挑战池:不再按星期几锁死(每周一都一样),而是每天顺着池子走,池子多大就多少天一循环。
+    // 仍然是"同一天全球同一个挑战"(按日期确定),满足共享挑战的设计。
+    const ref = Date.UTC(2026, 0, 1);
+    const cur = new Date(`${day}T00:00:00Z`).getTime();
+    const daysSince = Math.floor((cur - ref) / 86400000);
+    const len = DAILY_CHALLENGES.length;
+    return ((daysSince % len) + len) % len;
 };
 
 const getDailySpec = (day = getDayKey()) => {
     const challengeIndex = getDailyChallengeIndex(day);
-    const challenge = DAILY_CHALLENGES[challengeIndex % DAILY_CHALLENGES.length];
+    let challenge = DAILY_CHALLENGES[challengeIndex % DAILY_CHALLENGES.length];
+    // 测试用:?daily=<id> 强制预览指定的每日挑战(如 schulte-letters / schulte-grid6)
+    try {
+        const forced = new URLSearchParams(window.location.search).get('daily');
+        if (forced) {
+            const found = DAILY_CHALLENGES.find(c => c.id === forced);
+            if (found) challenge = found;
+        }
+    } catch (e) { }
     return {
         instanceId: `daily-${day}`,
         day,
@@ -1515,11 +1552,15 @@ function App() {
     const initGameCore = (type) => {
         const isHard = isChallengeDifficulty;
         if (type === 'schulte') {
-            const nums = Array.from({ length: 25 }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
-            const sequence = currentRunRef.current?.dailyVariant === 'reverse'
-                ? Array.from({ length: 25 }, (_, i) => 25 - i)
-                : Array.from({ length: 25 }, (_, i) => i + 1);
-            setSchulte({ grid: nums, sequence, index: 0, next: sequence[0] });
+            const variant = currentRunRef.current?.dailyVariant;
+            const cols = variant === 'grid6' ? 6 : 5;
+            const count = cols * cols; // 25 或 36
+            const symbols = variant === 'letters'
+                ? Array.from({ length: count }, (_, i) => String.fromCharCode(65 + i)) // A..Y
+                : Array.from({ length: count }, (_, i) => i + 1);              // 1..N
+            const sequence = variant === 'reverse' ? [...symbols].reverse() : symbols;
+            const grid = [...symbols].sort(() => Math.random() - 0.5);
+            setSchulte({ grid, sequence, index: 0, next: sequence[0], cols });
         } else if (type === 'stroop') {
             const colors = COLOR_LABELS;
             const validPairs = colors.flatMap((textColor, textIndex) =>
@@ -2690,7 +2731,7 @@ function App() {
                     </div>
                     <div className="game-stage flex-1 flex items-center justify-center p-6">
                         {view === 'schulte' && (
-                            <div className="grid grid-cols-5 gap-1.5 w-full max-w-sm aspect-square">
+                            <div className={`grid gap-1.5 w-full max-w-sm aspect-square ${schulte.cols === 6 ? 'grid-cols-6' : 'grid-cols-5'}`}>
                                 {schulte.grid.map(n => {
                                     // 核心逻辑：判断当前格子的状态
                                     const schulteSequence = schulte.sequence || Array.from({ length: 25 }, (_, i) => i + 1);
@@ -2725,7 +2766,7 @@ function App() {
                                                     handleArenaError(); // 点错了闪红光
                                                 }
                                             }}
-                                            className={`schulte-cell flex items-center justify-center font-bold text-lg rounded-lg border transition-all ${controlPulse === `schulte-${n}` ? 'is-tap-pulsing' : ''}
+                                            className={`schulte-cell flex items-center justify-center font-bold ${schulte.cols === 6 ? 'text-sm' : 'text-lg'} rounded-lg border transition-all ${controlPulse === `schulte-${n}` ? 'is-tap-pulsing' : ''}
     ${(isClicked && (mode === 'hard' || mode === 'daily')) // 竞技不使用盲点，Daily 使用进阶变体
                                                     ? 'bg-white text-slate-900 border-slate-100 shadow-sm' // 只有进阶模式是“盲点”
                                                     : (isClicked
