@@ -546,7 +546,8 @@ const getDayKey = (date = new Date()) => {
 const getDailyChallengeIndex = (day) => {
     // 按日期循环整个挑战池:不再按星期几锁死(每周一都一样),而是每天顺着池子走,池子多大就多少天一循环。
     // 仍然是"同一天全球同一个挑战"(按日期确定),满足共享挑战的设计。
-    const ref = Date.UTC(2026, 0, 1);
+    // 参考日对齐:让 2026-07-13(周一)= 字母迷阵、07-14(周二)= 6×6 扩容,方便上线当天就有新挑战。
+    const ref = Date.UTC(2026, 6, 7);
     const cur = new Date(`${day}T00:00:00Z`).getTime();
     const daysSince = Math.floor((cur - ref) / 86400000);
     const len = DAILY_CHALLENGES.length;
