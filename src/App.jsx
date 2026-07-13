@@ -33,7 +33,7 @@ const LatexFmt = ({ text }) => {
 
 const UI_TEXT = {
     zh: {
-        appTitle: "前额叶实验室 6.1.5",
+        appTitle: "前额叶实验室 6.1.6",
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
@@ -47,7 +47,7 @@ const UI_TEXT = {
         arenaShortTitle: "全能竞技",
         arenaSubtitle: "混合：舒尔特方格 / Stroop反应 / 快速SET / N-Back / 神经元计数",
         updateTitle: "实验室更新公告",
-        updateVersion: "Version 6.1.5",
+        updateVersion: "Version 6.1.6",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
         navTrain: "训练",
@@ -117,7 +117,7 @@ const UI_TEXT = {
         backHome: "返回大厅"
     },
     en: {
-        appTitle: "Prefrontal Lab 6.1.5",
+        appTitle: "Prefrontal Lab 6.1.6",
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
@@ -131,7 +131,7 @@ const UI_TEXT = {
         arenaShortTitle: "Arena",
         arenaSubtitle: "Mixed training: Schulte Grid / Stroop / SET / N-Back / Neuron Counting",
         updateTitle: "Lab Update",
-        updateVersion: "Version 6.1.5",
+        updateVersion: "Version 6.1.6",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
         navTrain: "Train",
@@ -204,16 +204,14 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "SET 与 N-Back 新增新手引导：第一次玩先教规则、带你上手。",
-        "SET 用三个示例讲清：颜色全同 / 形状全同 / 全不同，都是一组。",
-        "N-Back 新手前几题带对照、答错不扣分，先找手感再上难度。",
-        "进阶 SET 透明度从三档简化为两档，更好辨认。"
+        "每日挑战新增两个变体：字母迷阵、6×6 扩容网格。",
+        "每日挑战改为每天轮换，不再每周重复，天天有新花样。",
+        "新增震动反馈：答对、答错、完成都有手感（安卓设备）。"
     ],
     en: [
-        "New first-play guides for SET and N-Back.",
-        "SET now teaches with three examples: same color / same shape / all different.",
-        "N-Back eases newcomers in — the first rounds show the reference, no penalty.",
-        "Advanced SET opacity simplified from three levels to two for clarity."
+        "New Daily Challenge variants: Letter Maze and a 6×6 grid.",
+        "Daily Challenge now rotates daily — no more weekly repeats.",
+        "Added haptic feedback for correct, wrong, and complete (Android)."
     ]
 };
 
@@ -1105,13 +1103,13 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.5_update');
+        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.6_update');
     });
 
     const closeUpdateNote = () => {
         playSound('tap');
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
-        localStorage.setItem('prefrontal_lab_v6.1.5_update', 'true');
+        localStorage.setItem('prefrontal_lab_v6.1.6_update', 'true');
         setShowUpdateNote(false);
     };
 
