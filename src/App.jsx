@@ -554,6 +554,19 @@ const getDayKey = (date = new Date()) => {
     return `${year}-${month}-${day}`;
 };
 
+const getChinaDayKey = (date = new Date()) => {
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+    } catch (e) {
+        return getDayKey(date);
+    }
+};
+
 const getDailyChallengeIndex = (day) => {
     // 按日期循环整个挑战池:不再按星期几锁死(每周一都一样),而是每天顺着池子走,池子多大就多少天一循环。
     // 仍然是"同一天全球同一个挑战"(按日期确定),满足共享挑战的设计。
@@ -565,7 +578,7 @@ const getDailyChallengeIndex = (day) => {
     return ((daysSince % len) + len) % len;
 };
 
-const getDailySpec = (day = getDayKey()) => {
+const getDailySpec = (day = getChinaDayKey()) => {
     const challengeIndex = getDailyChallengeIndex(day);
     let challenge = DAILY_CHALLENGES[challengeIndex % DAILY_CHALLENGES.length];
     // 测试用:?daily=<id> 强制预览指定的每日挑战(如 schulte-letters / schulte-grid6)
