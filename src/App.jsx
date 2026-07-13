@@ -578,7 +578,9 @@ const getDailyChallengeIndex = (day) => {
     return ((daysSince % len) + len) % len;
 };
 
-const getDailySpec = (day = getChinaDayKey()) => {
+const TEST_DAILY_DAY_OVERRIDE = '2026-07-14';
+
+const getDailySpec = (day = TEST_DAILY_DAY_OVERRIDE || getChinaDayKey()) => {
     const challengeIndex = getDailyChallengeIndex(day);
     let challenge = DAILY_CHALLENGES[challengeIndex % DAILY_CHALLENGES.length];
     // 测试用:?daily=<id> 强制预览指定的每日挑战(如 schulte-letters / schulte-grid6)
