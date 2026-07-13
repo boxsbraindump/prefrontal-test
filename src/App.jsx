@@ -385,6 +385,8 @@ const createSoundEngine = () => {
         source.stop(now + duration);
     };
 
+    const buzz = (pattern) => { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { } };
+
     return {
         play(kind, enabled = true) {
             if (!enabled) return;
@@ -416,6 +418,17 @@ const createSoundEngine = () => {
                 tone({ freq: 988, start: 0.13, duration: 0.18, type: 'sine', gain: 0.05 });
                 noise({ start: 0.05, duration: 0.16, gain: 0.016, filter: 2800 });
             }
+
+            // 触感反馈:只在有意义的时刻震动(tap/scoreTick 太频繁,不震)。与音效同开关。
+            // Android Chrome 支持;iOS Safari 不支持振动 API,会静默跳过。
+            const HAPTICS = {
+                success: 12,                       // 答对:轻脆一下
+                error: [25, 30, 25],               // 答错:双段闷震="不对"
+                complete: [15, 30, 15, 30, 50],    // 完成:庆祝节奏
+                daily: [12, 25, 12, 25, 12, 25, 60], // 每日打卡:更长的庆祝
+                start: 8                           // 开始:极轻
+            };
+            if (HAPTICS[kind]) buzz(HAPTICS[kind]);
         }
     };
 };

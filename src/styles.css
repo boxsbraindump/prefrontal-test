@@ -1482,6 +1482,7 @@ body.is-app-scrollable .app-shell {
     border-radius: 999px;
 }
 
+
 @keyframes nback-card-popup {
     0% {
         opacity: 0;
