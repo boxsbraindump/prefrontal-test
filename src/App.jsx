@@ -1999,7 +1999,7 @@ function App() {
         range: recordsRange,
         preview: urlParams.has('trainingRecordsPreview')
     });
-    const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview') && (urlParams.has('trainingRecordsPreview') || trainingRecords.lifetimeTrainingDays >= 7);
+    const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview');
     const trainingRecordsMaxTask = Math.max(1, ...trainingRecords.taskMix.map(item => item.count));
     const selectedTrainingDayDetail = selectedTrainingDay ? trainingRecords.dayDetails[selectedTrainingDay] : null;
     const selectedTrainingDayTask = selectedTrainingDayDetail?.topTask ? getTaskTitle(selectedTrainingDayDetail.topTask) : null;
