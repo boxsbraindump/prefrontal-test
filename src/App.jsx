@@ -611,11 +611,12 @@ const getOffsetDayKey = (day, offset) => {
 };
 
 const getVisitorId = () => {
-    let visitorId = localStorage.getItem(RETENTION_VISITOR_KEY);
+    let visitorId = null;
+    try { visitorId = localStorage.getItem(RETENTION_VISITOR_KEY); } catch (error) { }
     if (!visitorId) {
         const randomPart = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         visitorId = `pfl-${randomPart}`;
-        localStorage.setItem(RETENTION_VISITOR_KEY, visitorId);
+        try { localStorage.setItem(RETENTION_VISITOR_KEY, visitorId); } catch (error) { }
     }
     return visitorId;
 };
@@ -1325,7 +1326,9 @@ function App() {
     const [dailyWeekAdvance, setDailyWeekAdvance] = useState(null);
     const [cloudSummary, setCloudSummary] = useState(null);
     const [cloudStatus, setCloudStatus] = useState('idle');
-    const [ownerToken, setOwnerToken] = useState(() => localStorage.getItem(OWNER_TOKEN_KEY) || '');
+    const [ownerToken, setOwnerToken] = useState(() => {
+        try { return localStorage.getItem(OWNER_TOKEN_KEY) || ''; } catch (error) { return ''; }
+    });
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(() => {
         try {
@@ -1584,7 +1587,7 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.6_update');
+        try { return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.6_update'); } catch (error) { return shouldPreviewUpdate; }
     });
 
     const closeUpdateNote = () => {
