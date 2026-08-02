@@ -4273,9 +4273,8 @@ body.is-app-scrollable .app-shell {
 
 .my-progress-card {
     overflow: hidden;
-    border: 1px solid #e0e4f8;
-    border-left: 3px solid #4f46e5;
-    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
     background: #ffffff;
     box-shadow: 0 2px 0 rgba(15, 23, 42, 0.025);
 }
@@ -4285,7 +4284,7 @@ body.is-app-scrollable .app-shell {
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    padding: 16px 16px 13px;
+    padding: 15px 16px 13px;
 }
 
 .my-progress-card-head > div {
@@ -4295,13 +4294,13 @@ body.is-app-scrollable .app-shell {
 }
 
 .my-progress-card-head span {
-    color: #8187c4;
+    color: #64748b;
     font-size: 10px;
     font-weight: 850;
 }
 
 .my-progress-card-head strong {
-    color: #162044;
+    color: #0f172a;
     font-size: 17px;
     font-weight: 900;
     line-height: 1.15;
