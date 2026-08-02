@@ -1281,6 +1281,7 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
 function App() {
     const DEFAULT_TASK_BESTS = { schulte: 0, stroop: 0, nback: 0, setgame: 0, neuroncount: 0 };
     const urlParams = new URLSearchParams(window.location.search);
+    const isTestDemoBuild = window.location.hostname === 'boxsbraindump.github.io' && window.location.pathname.startsWith('/prefrontal-test');
     // 归因:接住 ?from= 参数(小红书链接 UTM)。首次带 from 到访即记住(首触归因),之后沿用。
     const acquisitionSource = (() => {
         try {
@@ -1353,7 +1354,7 @@ function App() {
     const dailyPreviewParams = new URLSearchParams(window.location.search);
     const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
     const isDailyCelebratePreview = dailyPreviewParams.has('dailyCelebratePreview');
-    const isWeeklyReportPreview = dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview') || dailyPreviewParams.has('weeklyReportDemo');
+    const isWeeklyReportPreview = isTestDemoBuild || dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview') || dailyPreviewParams.has('weeklyReportDemo');
     const weeklyReportGoal = isWeeklyReportPreview ? 6 : WEEKLY_DAILY_GOAL;
     const previewDailyWeekDays = isDailyRewardPreview
         ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
@@ -1994,7 +1995,7 @@ function App() {
     });
     const isMonday = new Date(`${dailySpec.day}T12:00:00`).getDay() === 1;
     const isWeeklyReportPromptPreview = urlParams.has('weeklyReportPopupPreview');
-    const isTrainingRecordsPreview = urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo');
+    const isTrainingRecordsPreview = isTestDemoBuild || urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo');
     const trainingRecords = buildTrainingRecordData({
         retentionData,
         dailyProgress,
