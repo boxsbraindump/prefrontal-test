@@ -4629,6 +4629,12 @@ body.is-app-scrollable .app-shell {
     background: #edf2f7;
 }
 
+@media (min-width: 900px) {
+    .my-page-screen {
+        padding: 118px 56px 42px !important;
+    }
+}
+
 @keyframes float-neuron {
     0%, 100% { transform: var(--neuron-transform) translateY(0px); }
     50% { transform: var(--neuron-transform) translateY(-6px); }
