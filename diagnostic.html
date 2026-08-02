@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Prefrontal Lab · 连接诊断</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+    body { margin: 0; background: #f8fafc; color: #0f172a; }
+    main { max-width: 520px; margin: 0 auto; padding: 48px 22px; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { color: #64748b; line-height: 1.6; }
+    .card { margin-top: 24px; padding: 18px; border-radius: 18px; background: white; box-shadow: 0 8px 30px rgba(15,23,42,.08); }
+    .row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .row:last-child { border-bottom: 0; }
+    .value { color: #475569; text-align: right; word-break: break-word; }
+    a { display: inline-block; margin-top: 20px; color: white; background: #4f46e5; padding: 12px 16px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Prefrontal Lab 连接诊断</h1>
+    <p>如果你能看到这个页面，说明 iPhone Chrome 可以打开 test repo；下面的应用链接才是脚本加载问题。</p>
+    <div class="card">
+      <div class="row"><span>静态页面</span><strong class="value">可以打开</strong></div>
+      <div class="row"><span>浏览器</span><span class="value" id="ua">读取中</span></div>
+      <div class="row"><span>本地记录权限</span><span class="value" id="storage">读取中</span></div>
+      <div class="row"><span>JavaScript</span><span class="value" id="js">正常</span></div>
+    </div>
+    <a href="./?diagnostic-app=1">返回测试应用</a>
+  </main>
+  <script>
+    document.getElementById('ua').textContent = navigator.userAgent || '未知';
+    try {
+      localStorage.getItem('prefrontal_lab_diagnostic_probe');
+      document.getElementById('storage').textContent = '可读取（没有修改记录）';
+    } catch (error) {
+      document.getElementById('storage').textContent = '不可读取';
+    }
+  </script>
+</body>
+</html>
