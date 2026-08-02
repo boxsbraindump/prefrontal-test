@@ -773,6 +773,44 @@ body.is-app-scrollable .app-shell {
     border: 1px solid #e2e8f0;
     border-radius: 18px;
     background: #ffffff;
+    touch-action: pan-y;
+}
+
+.training-records-heatmap-head {
+    min-height: 30px;
+}
+
+.training-records-month-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.training-records-month-controls button {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #64748b;
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.training-records-month-controls button:not(:disabled):hover {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+.training-records-month-controls button:not(:disabled):active {
+    transform: scale(0.92);
+}
+
+.training-records-month-controls button:disabled {
+    cursor: default;
+    opacity: 0.35;
 }
 
 .training-records-heatmap-layout {
@@ -788,6 +826,24 @@ body.is-app-scrollable .app-shell {
     width: 100%;
     max-width: 224px;
     margin: 0 auto;
+    animation: training-records-month-enter 180ms ease-out;
+}
+
+@keyframes training-records-month-enter {
+    from {
+        opacity: 0.45;
+        transform: translateX(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .training-records-heatmap {
+        animation: none;
+    }
 }
 
 .training-records-heatmap-body {

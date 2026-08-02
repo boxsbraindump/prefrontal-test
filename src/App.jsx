@@ -878,7 +878,7 @@ const getWeeklyBrainReportEvents = (retentionData, dailyProgress, today, preview
 
 const getTrainingRecordEventDay = (event) => event.dailyDay || event.day || (event.at ? getDayKey(new Date(event.at)) : null);
 
-const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitle, isEnglish, range = 'week', preview = false }) => {
+const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitle, isEnglish, range = 'week', preview = false, monthOffset = 0 }) => {
     const todayKey = typeof today === 'string' ? today : getDayKey(today);
     const todayDate = new Date(`${todayKey}T00:00:00`);
     let periodStart = new Date(todayDate);
@@ -946,8 +946,9 @@ const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitl
         .map(event => Number(event.durationSeconds || 0))
         .filter(value => value > 0);
 
-    const heatmapDataStartDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
-    const heatmapDataEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+    const heatmapMonthDate = new Date(todayDate.getFullYear(), todayDate.getMonth() + monthOffset, 1);
+    const heatmapDataStartDate = new Date(heatmapMonthDate.getFullYear(), heatmapMonthDate.getMonth(), 1);
+    const heatmapDataEndDate = new Date(heatmapMonthDate.getFullYear(), heatmapMonthDate.getMonth() + 1, 0);
     const heatmapDataStartKey = getDayKey(heatmapDataStartDate);
     const heatmapDataEndKey = getDayKey(heatmapDataEndDate);
     const heatmapCounts = allEvents.reduce((acc, event) => {
@@ -1011,9 +1012,11 @@ const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitl
         detail.topTask = Object.entries(detail.tasks).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     });
     let heatmapStreak = 0;
+    const heatmapStreakAnchor = heatmapDataEndDate < todayDate ? heatmapDataEndDate : todayDate;
     for (let offset = 0; offset < 31; offset += 1) {
-        const date = new Date(todayDate);
+        const date = new Date(heatmapStreakAnchor);
         date.setDate(date.getDate() - offset);
+        if (date < heatmapDataStartDate) break;
         if ((heatmapCounts[getDayKey(date)] || 0) > 0) heatmapStreak += 1;
         else break;
     }
@@ -1110,8 +1113,11 @@ const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitl
         growthSummary,
         preferenceSummary,
         monthLabel: isEnglish
-            ? todayDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
-            : `${todayDate.getFullYear()}年${todayDate.getMonth() + 1}月`,
+            ? heatmapMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+            : `${heatmapMonthDate.getFullYear()}年${heatmapMonthDate.getMonth() + 1}月`,
+        heatmapSummaryLabel: monthOffset === 0
+            ? (isEnglish ? 'This month' : '本月')
+            : (isEnglish ? 'Selected month' : '所选月份'),
         bars: bars.map(item => ({ ...item, percent: Math.round((item.count / maxBar) * 100) })),
         performanceBars,
         effectSummary,
@@ -1318,6 +1324,8 @@ function App() {
     const [weeklyReportScope, setWeeklyReportScope] = useState('current');
     const [weeklyReportReturnView, setWeeklyReportReturnView] = useState('settings');
     const [recordsRange, setRecordsRange] = useState('week');
+    const [heatmapMonthOffset, setHeatmapMonthOffset] = useState(0);
+    const heatmapTouchStartRef = useRef(null);
     const [selectedTrainingDay, setSelectedTrainingDay] = useState(null);
     const [showWeeklyReportPrompt, setShowWeeklyReportPrompt] = useState(false);
     const [showFirstPlayNudge, setShowFirstPlayNudge] = useState(() => {
@@ -1635,6 +1643,30 @@ function App() {
         playSound('tap');
         setMode(nextMode);
         setView('home');
+    };
+
+    const shiftHeatmapMonth = (direction) => {
+        const nextOffset = Math.max(-12, Math.min(0, heatmapMonthOffset + direction));
+        if (nextOffset === heatmapMonthOffset) return;
+        playSound('tap');
+        setHeatmapMonthOffset(nextOffset);
+        setSelectedTrainingDay(null);
+    };
+
+    const handleHeatmapTouchStart = (event) => {
+        const touch = event.touches?.[0];
+        heatmapTouchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+    };
+
+    const handleHeatmapTouchEnd = (event) => {
+        const start = heatmapTouchStartRef.current;
+        const touch = event.changedTouches?.[0];
+        heatmapTouchStartRef.current = null;
+        if (!start || !touch) return;
+        const deltaX = touch.clientX - start.x;
+        const deltaY = touch.clientY - start.y;
+        if (Math.abs(deltaX) < 44 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+        shiftHeatmapMonth(deltaX > 0 ? 1 : -1);
     };
 
     const navItems = [
@@ -2003,7 +2035,8 @@ function App() {
         taskTitle: getTaskTitle,
         isEnglish,
         range: recordsRange,
-        preview: isTrainingRecordsPreview
+        preview: isTrainingRecordsPreview,
+        monthOffset: heatmapMonthOffset
     });
     const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview');
     const trainingRecordsMaxTask = Math.max(1, ...trainingRecords.taskMix.map(item => item.count));
@@ -3559,13 +3592,36 @@ function App() {
                             </span>
                         </button>
 
-                        <div className="training-records-heatmap-panel">
-                            <div className="training-records-panel-head">
+                        <div
+                            className="training-records-heatmap-panel"
+                            onTouchStart={handleHeatmapTouchStart}
+                            onTouchEnd={handleHeatmapTouchEnd}
+                        >
+                            <div className="training-records-panel-head training-records-heatmap-head">
                                 <div>
                                     <div className="training-records-panel-kicker">{settingsPageText.recordsHeatmap}</div>
                                     <strong>{trainingRecords.monthLabel}</strong>
                                 </div>
-                                <Icon name="calendar-days" className="w-4 h-4" />
+                                <div className="training-records-month-controls" aria-label={isEnglish ? 'Change month' : '切换月份'}>
+                                    <button
+                                        type="button"
+                                        aria-label={isEnglish ? 'Previous month' : '上个月'}
+                                        title={isEnglish ? 'Previous month' : '上个月'}
+                                        disabled={heatmapMonthOffset <= -12}
+                                        onClick={() => shiftHeatmapMonth(-1)}
+                                    >
+                                        <Icon name="chevron-left" className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-label={isEnglish ? 'Current month' : '回到本月'}
+                                        title={isEnglish ? 'Current month' : '回到本月'}
+                                        disabled={heatmapMonthOffset >= 0}
+                                        onClick={() => shiftHeatmapMonth(1)}
+                                    >
+                                        <Icon name="chevron-right" className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                             <div className="training-records-heatmap-layout">
                                 <div className="training-records-heatmap" aria-label={settingsPageText.recordsHeatmap}>
@@ -3603,7 +3659,7 @@ function App() {
                                     </div>
                                 </div>
                                 <div className="training-records-heatmap-summary">
-                                    <span>{isEnglish ? 'Past month' : '过去一个月'}</span>
+                                    <span>{trainingRecords.heatmapSummaryLabel}</span>
                                     <div>
                                         <strong>{trainingRecords.heatmapCompletedDays}</strong>
                                         <small>{settingsPageText.recordsTrainingDays}</small>
