@@ -3353,12 +3353,12 @@ function App() {
             )}
 
             {view === 'settings' && (
-                <div className="settings-screen app-content-screen h-full overflow-y-auto no-scrollbar bg-slate-50 px-5 py-5">
+                <div className="settings-screen my-page-screen app-content-screen h-full overflow-y-auto no-scrollbar bg-slate-50 px-5 py-5">
                     <div className="settings-page-wrap">
                         <div className="settings-page-hero my-page-hero">
                             <div>
                                 <h2>{ui.settings}</h2>
-                                <p>{isEnglish ? 'Your milestones and preferences in one place.' : '\u67e5\u770b\u4f60\u7684\u6210\u5c31\u548c\u504f\u597d\u3002'}</p>
+                                <p>{isEnglish ? 'Your training record and preferences.' : '\u4f60\u7684\u8bad\u7ec3\u8bb0\u5f55\u4e0e\u504f\u597d\u8bbe\u7f6e\u3002'}</p>
                             </div>
                         </div>
 
@@ -3398,7 +3398,7 @@ function App() {
                             <div className="settings-page-pill">{settingsPageText.accountCta}</div>
                         </div>
 
-                        <div className="my-page-section-label">{isEnglish ? 'YOUR LAB' : '你的实验室'}</div>
+                        <div className="my-page-section-label">{isEnglish ? 'MORE' : '\u66f4\u591a\u529f\u80fd'}</div>
 
                         <div className="settings-page-card settings-page-group settings-my-features my-feature-list">
                             <div className="settings-page-group-row settings-page-row my-feature-row">
