@@ -1558,6 +1558,7 @@ function App() {
                 }
             } catch (error) {
                 // 保留原始 localStorage，不让损坏的旧记录阻断应用启动。
+                try { localStorage.setItem('brain_train_pro_v5_recovery_backup', v2DataRaw); } catch (backupError) { }
             }
         }
 
@@ -1571,6 +1572,7 @@ function App() {
                 }
             } catch (error) {
                 // 旧版本数据格式异常时，继续使用安全的默认结构。
+                try { localStorage.setItem('brain_train_pro_data_recovery_backup', v1DataRaw); } catch (backupError) { }
             }
         }
         return base;
