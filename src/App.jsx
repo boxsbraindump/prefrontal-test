@@ -1534,26 +1534,44 @@ function App() {
 
     // --- 数据迁移逻辑：确保 1.0 数据同步到 5.0 ---
     const [history, setHistory] = useState(() => {
-        const v1DataRaw = localStorage.getItem('brain_train_pro_data');
-        const v2DataRaw = localStorage.getItem('brain_train_pro_v5');
-
         let base = { bestScore: 0, bestCompScore: 0, isHardUnlocked: false, taskBestScores: DEFAULT_TASK_BESTS };
+
+        let v2DataRaw = null;
+        let v1DataRaw = null;
+        try {
+            v1DataRaw = localStorage.getItem('brain_train_pro_data');
+            v2DataRaw = localStorage.getItem('brain_train_pro_v5');
+        } catch (error) {
+            return base;
+        }
 
         // 如果有 2.0 数据，直接用
         if (v2DataRaw) {
-            const v2 = JSON.parse(v2DataRaw);
-            return {
-                ...base,
-                ...v2,
-                taskBestScores: { ...DEFAULT_TASK_BESTS, ...(v2.taskBestScores || {}) }
-            };
+            try {
+                const v2 = JSON.parse(v2DataRaw);
+                if (v2 && typeof v2 === 'object') {
+                    return {
+                        ...base,
+                        ...v2,
+                        taskBestScores: { ...DEFAULT_TASK_BESTS, ...(v2.taskBestScores || {}) }
+                    };
+                }
+            } catch (error) {
+                // 保留原始 localStorage，不让损坏的旧记录阻断应用启动。
+            }
         }
 
         // 如果没有 2.0 但有 1.0 数据，进行搬运
         if (v1DataRaw) {
-            const v1 = JSON.parse(v1DataRaw);
-            base.bestScore = v1.bestScore || 0;
-            base.isHardUnlocked = v1.isHardUnlocked || false;
+            try {
+                const v1 = JSON.parse(v1DataRaw);
+                if (v1 && typeof v1 === 'object') {
+                    base.bestScore = v1.bestScore || 0;
+                    base.isHardUnlocked = v1.isHardUnlocked || false;
+                }
+            } catch (error) {
+                // 旧版本数据格式异常时，继续使用安全的默认结构。
+            }
         }
         return base;
     });
