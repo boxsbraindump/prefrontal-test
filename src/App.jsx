@@ -869,7 +869,7 @@ const getWeeklyBrainReportEvents = (retentionData, dailyProgress, today, preview
             { name: 'game_complete', day: recentDays[4], task: 'schulte', dailyTask: 'schulte', score: 640, durationSeconds: 47, correct: 25, incorrect: 0 },
             { name: 'game_complete', day: recentDays[4], task: 'setgame', dailyTask: 'setgame', score: 300, durationSeconds: 60, correct: 6, incorrect: 1 },
             { name: 'game_complete', day: recentDays[5], task: 'stroop', dailyTask: 'stroop', score: 580, durationSeconds: 52, correct: 31, incorrect: 2 },
-            { name: 'game_complete', day: recentDays[5], task: 'schulte', dailyTask: 'schulte', score: 690, durationSeconds: 44, correct: 25, incorrect: 0 }
+            { name: 'game_complete', day: recentDays[5], task: 'schulte', dailyTask: 'schulte', score: 1130, durationSeconds: 44, correct: 25, incorrect: 0 }
         ];
     }
 
@@ -1141,7 +1141,7 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
             return eventDay && previousWeekSet.has(eventDay);
         });
     const completedDays = preview
-        ? Math.min(5, WEEKLY_DAILY_GOAL)
+        ? 6
         : weekDays.filter(item => item.completed).length;
     const activeTrainingDays = new Set(weekCompletions.map(event => event.dailyDay || event.day).filter(Boolean)).size;
     const taskCounts = weekCompletions.reduce((acc, event) => {
@@ -1296,6 +1296,7 @@ function App() {
     const [view, setView] = useState(() => {
         if (urlParams.has('analytics') && urlParams.get('owner') === '1') return 'analytics';
         if (urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo')) return 'training-records';
+        if (urlParams.has('weeklyReportDemo')) return 'weekly-report';
         if (urlParams.has('my-page-preview') || urlParams.has('myPagePreview')) return 'settings';
         return 'home';
     });
@@ -1352,7 +1353,8 @@ function App() {
     const dailyPreviewParams = new URLSearchParams(window.location.search);
     const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
     const isDailyCelebratePreview = dailyPreviewParams.has('dailyCelebratePreview');
-    const isWeeklyReportPreview = dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview');
+    const isWeeklyReportPreview = dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview') || dailyPreviewParams.has('weeklyReportDemo');
+    const weeklyReportGoal = isWeeklyReportPreview ? 6 : WEEKLY_DAILY_GOAL;
     const previewDailyWeekDays = isDailyRewardPreview
         ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
         : dailyWeekDays;
@@ -3917,7 +3919,7 @@ function App() {
                                     <div className="weekly-receipt-cover-body">
                                         <div className="weekly-receipt-preview-line">
                                             <span>{isEnglish ? 'This week' : '本周完成'}</span>
-                                            <strong>{weeklyReport.completedDays}/{WEEKLY_DAILY_GOAL} {isEnglish ? 'days' : '天'}</strong>
+                                            <strong>{weeklyReport.completedDays}/{weeklyReportGoal} {isEnglish ? 'days' : '天'}</strong>
                                         </div>
                                         <div className="weekly-receipt-open-cta">
                                             <Icon name="gift" className="w-4 h-4" />
