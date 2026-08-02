@@ -860,14 +860,16 @@ const formatWeeklySeconds = (seconds, isEnglish) => {
 
 const getWeeklyBrainReportEvents = (retentionData, dailyProgress, today, preview = false) => {
     if (preview) {
-        const weekDays = getWeeklyDailyDays({}, today).map(item => item.day);
+        const recentDays = Array.from({ length: 6 }, (_, index) => getOffsetDayKey(today, -(5 - index)));
         return [
-            { name: 'game_complete', day: weekDays[0], task: 'schulte', dailyTask: 'schulte', score: 420, durationSeconds: 68, correct: 25, incorrect: 1 },
-            { name: 'game_complete', day: weekDays[1], task: 'stroop', dailyTask: 'stroop', score: 510, durationSeconds: 60, correct: 28, incorrect: 3 },
-            { name: 'game_complete', day: weekDays[2], task: 'schulte', dailyTask: 'schulte', score: 560, durationSeconds: 54, correct: 25, incorrect: 0 },
-            { name: 'game_complete', day: weekDays[3], task: 'nback', dailyTask: 'nback', score: 360, durationSeconds: 60, correct: 11, incorrect: 2 },
-            { name: 'game_complete', day: weekDays[4], task: 'schulte', dailyTask: 'schulte', score: 640, durationSeconds: 47, correct: 25, incorrect: 0 },
-            { name: 'game_complete', day: weekDays[4], task: 'setgame', dailyTask: 'setgame', score: 300, durationSeconds: 60, correct: 6, incorrect: 1 }
+            { name: 'game_complete', day: recentDays[0], task: 'schulte', dailyTask: 'schulte', score: 420, durationSeconds: 68, correct: 24, incorrect: 2 },
+            { name: 'game_complete', day: recentDays[1], task: 'stroop', dailyTask: 'stroop', score: 510, durationSeconds: 60, correct: 27, incorrect: 3 },
+            { name: 'game_complete', day: recentDays[2], task: 'schulte', dailyTask: 'schulte', score: 560, durationSeconds: 54, correct: 25, incorrect: 0 },
+            { name: 'game_complete', day: recentDays[3], task: 'nback', dailyTask: 'nback', score: 360, durationSeconds: 60, correct: 11, incorrect: 2 },
+            { name: 'game_complete', day: recentDays[4], task: 'schulte', dailyTask: 'schulte', score: 640, durationSeconds: 47, correct: 25, incorrect: 0 },
+            { name: 'game_complete', day: recentDays[4], task: 'setgame', dailyTask: 'setgame', score: 300, durationSeconds: 60, correct: 6, incorrect: 1 },
+            { name: 'game_complete', day: recentDays[5], task: 'stroop', dailyTask: 'stroop', score: 580, durationSeconds: 52, correct: 31, incorrect: 2 },
+            { name: 'game_complete', day: recentDays[5], task: 'schulte', dailyTask: 'schulte', score: 690, durationSeconds: 44, correct: 25, incorrect: 0 }
         ];
     }
 
@@ -1293,7 +1295,7 @@ function App() {
     const [isOwner, setIsOwner] = useState(() => urlParams.get('owner') === '1');
     const [view, setView] = useState(() => {
         if (urlParams.has('analytics') && urlParams.get('owner') === '1') return 'analytics';
-        if (urlParams.has('trainingRecordsPreview')) return 'training-records';
+        if (urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo')) return 'training-records';
         if (urlParams.has('my-page-preview') || urlParams.has('myPagePreview')) return 'settings';
         return 'home';
     });
@@ -1990,6 +1992,7 @@ function App() {
     });
     const isMonday = new Date(`${dailySpec.day}T12:00:00`).getDay() === 1;
     const isWeeklyReportPromptPreview = urlParams.has('weeklyReportPopupPreview');
+    const isTrainingRecordsPreview = urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo');
     const trainingRecords = buildTrainingRecordData({
         retentionData,
         dailyProgress,
@@ -1997,7 +2000,7 @@ function App() {
         taskTitle: getTaskTitle,
         isEnglish,
         range: recordsRange,
-        preview: urlParams.has('trainingRecordsPreview')
+        preview: isTrainingRecordsPreview
     });
     const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview');
     const trainingRecordsMaxTask = Math.max(1, ...trainingRecords.taskMix.map(item => item.count));
