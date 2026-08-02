@@ -1,42 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="google-site-verification" content="3s9HhfGiufMn-CV7OhrmbOc2FRz2rrW3vr4sDleNKUE" />
-    <title>Prefrontal Lab | Cognitive Training Games</title>
+    <title>前额叶实验室 Prefrontal Lab｜认知训练小游戏</title>
     <meta name="description"
-        content="Prefrontal Lab is a fast cognitive training game suite for attention, working memory, visual search, inhibition, and reasoning." />
-    <meta name="application-name" content="Prefrontal Lab" />
+        content="前额叶实验室是一套打开即玩的脑力训练小游戏合集,包含舒尔特方格、Stroop 干扰、N-Back 工作记忆、SET 逻辑与神经元计数,帮你训练专注力、工作记忆、反应抑制与逻辑。无需下载,浏览器直接玩。" />
+    <meta name="keywords"
+        content="前额叶实验室,认知训练,脑力训练,舒尔特方格,Stroop,N-Back,专注力训练,工作记忆,益智小游戏,brain training,prefrontal lab" />
+    <meta name="application-name" content="前额叶实验室 Prefrontal Lab" />
     <meta name="robots" content="index,follow" />
     <link rel="canonical" href="https://prefrontal-lab.com/" />
-    <meta property="og:title" content="Prefrontal Lab | Cognitive Training Games" />
+    <meta property="og:title" content="前额叶实验室 Prefrontal Lab｜认知训练小游戏" />
     <meta property="og:description"
-        content="Train attention, working memory, visual search, inhibition, and reasoning with quick brain-training games." />
+        content="舒尔特方格 / Stroop / N-Back / SET / 神经元计数——一套打开即玩的脑力训练小游戏,练专注力、工作记忆与逻辑。" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://prefrontal-lab.com/" />
-    <meta property="og:locale" content="en_US" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Prefrontal Lab | Cognitive Training Games" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:image" content="https://prefrontal-lab.com/og-cover.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="前额叶实验室 Prefrontal Lab｜认知训练小游戏" />
     <meta name="twitter:description"
-        content="Quick cognitive training games for attention, memory, inhibition, and reasoning." />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
-    <link rel="stylesheet" href="./src/styles.css?v=v20260802-mobile-storage-safe">
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+        content="打开即玩的脑力训练小游戏:舒尔特方格、Stroop、N-Back、SET、神经元计数。" />
+    <meta name="twitter:image" content="https://prefrontal-lab.com/og-cover.png" />
+  <script type="module" crossorigin src="./assets/index-a5HSpXC2.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CuxyBdCH.css">
 </head>
 
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <!-- 首屏静态骨架:React 挂载前即可被搜索引擎抓取(含中文品牌名与关键词),挂载后被应用覆盖。 -->
+        <div style="max-width:560px;margin:14vh auto 0;padding:0 24px;text-align:center;font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;color:#334155;">
+            <h1 style="font-size:26px;font-weight:800;color:#4f46e5;margin:0 0 6px;">前额叶实验室</h1>
+            <p style="font-size:13px;letter-spacing:2px;color:#94a3b8;margin:0 0 18px;">PREFRONTAL LAB · 认知训练小游戏</p>
+            <p style="font-size:15px;line-height:1.7;margin:0 0 20px;">
+                用快速的脑力小游戏训练你的专注力、工作记忆、反应抑制与逻辑。打开即玩,无需下载。
+            </p>
+            <ul style="list-style:none;padding:0;margin:0;font-size:14px;line-height:2;color:#475569;text-align:left;display:inline-block;">
+                <li>舒尔特方格 —— 专注力与视觉搜索</li>
+                <li>Stroop 干扰 —— 认知抑制控制</li>
+                <li>N-Back 记忆 —— 工作记忆</li>
+                <li>SET 逻辑 —— 认知灵活性</li>
+                <li>神经元计数 —— 快速估算</li>
+            </ul>
+            <p style="font-size:13px;color:#94a3b8;margin:22px 0 0;">正在加载…</p>
+        </div>
+        <noscript>前额叶实验室是一套认知训练小游戏。请开启 JavaScript 后开始游戏。Prefrontal Lab is a cognitive training game suite; please enable JavaScript to play.</noscript>
+    </div>
 
-    <script src="./src/gameLogic.js?v=v20260802-mobile-storage-safe"></script>
-    <script type="text/babel" data-presets="env,react" src="./src/App.jsx?v=v20260802-mobile-storage-safe"></script>
 </body>
 
 </html>

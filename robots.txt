@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://prefrontal-lab.com/sitemap.xml
