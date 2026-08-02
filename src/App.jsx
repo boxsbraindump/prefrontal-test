@@ -50,11 +50,16 @@ const UI_TEXT = {
         updateVersion: "Version 6.1.6",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
+        firstPlayKicker: "\u7b2c\u4e00\u6b21\u6765\uff1f",
+        firstPlayTitle: "\u5148\u8bd5\u8bd5 60 \u79d2\u8212\u5c14\u7279",
+        firstPlayBody: "\u4ece 1 \u70b9\u5230 25 \u70b9\uff0c\u627e\u5230\u8282\u594f\u5c31\u4e0a\u624b\u3002",
+        firstPlayStart: "\u5f00\u59cb\u7b2c\u4e00\u5c40",
+        firstPlayLater: "\u5148\u770b\u770b",
         navTrain: "训练",
         navDaily: "每日挑战",
         navArena: "竞技",
         navAnalytics: "分析",
-        settings: "设置",
+        settings: "我的",
         settingsLanguage: "语言",
         settingsSound: "音效",
         settingsSoundOn: "开启",
@@ -87,6 +92,7 @@ const UI_TEXT = {
         dailyTomorrowPrefix: "明天",
         dailySeeTomorrow: "明天见",
         dailyPracticeAgain: "再练一次",
+        dailyResultNote: "今天完成了一次专注训练，明天回来继续累积你的记录。",
         dailyCategories: {
             schulte: "视觉搜索挑战",
             stroop: "反应控制挑战",
@@ -134,11 +140,16 @@ const UI_TEXT = {
         updateVersion: "Version 6.1.6",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
+        firstPlayKicker: "New here?",
+        firstPlayTitle: "Start with a 60-second Schulte run",
+        firstPlayBody: "Find 1 to 25 in order. It is the quickest way to get a feel for the lab.",
+        firstPlayStart: "Start first run",
+        firstPlayLater: "Just look around",
         navTrain: "Train",
         navDaily: "Daily",
         navArena: "Arena",
         navAnalytics: "Analytics",
-        settings: "Settings",
+        settings: "My Lab",
         settingsLanguage: "Language",
         settingsSound: "Sound",
         settingsSoundOn: "On",
@@ -171,6 +182,7 @@ const UI_TEXT = {
         dailyTomorrowPrefix: "Tomorrow",
         dailySeeTomorrow: "See you tomorrow",
         dailyPracticeAgain: "Practice again",
+        dailyResultNote: "One focused session is in the record. Come back tomorrow and keep building your rhythm.",
         dailyCategories: {
             schulte: "visual search challenge",
             stroop: "reaction control challenge",
@@ -396,6 +408,13 @@ const createSoundEngine = () => {
                 tone({ freq: 520, duration: 0.055, type: 'sine', gain: 0.04, filter: 1800 });
             } else if (kind === 'scoreTickHigh') {
                 tone({ freq: 700, duration: 0.055, type: 'sine', gain: 0.042, filter: 2200 });
+            } else if (kind.startsWith('reportStep')) {
+                const step = Math.min(5, Math.max(1, Number(kind.replace('reportStep', '')) || 1));
+                const baseFreq = 500 + ((step - 1) * 72);
+                const gain = 0.03 + (step * 0.006);
+                tone({ freq: baseFreq, duration: 0.05, type: 'triangle', gain, filter: 2400 + (step * 120) });
+                tone({ freq: baseFreq + 220, start: 0.035, duration: 0.08, type: 'sine', gain: gain + 0.004, filter: 3000 + (step * 140) });
+                if (step === 5) tone({ freq: 1260, start: 0.075, duration: 0.13, type: 'sine', gain: 0.058, filter: 3800 });
             } else if (kind === 'start') {
                 tone({ freq: 520, duration: 0.055, type: 'triangle', gain: 0.04 });
                 tone({ freq: 780, start: 0.045, duration: 0.07, type: 'triangle', gain: 0.045 });
@@ -554,19 +573,6 @@ const getDayKey = (date = new Date()) => {
     return `${year}-${month}-${day}`;
 };
 
-const getChinaDayKey = (date = new Date()) => {
-    try {
-        return new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).format(date);
-    } catch (e) {
-        return getDayKey(date);
-    }
-};
-
 const getDailyChallengeIndex = (day) => {
     // 按日期循环整个挑战池:不再按星期几锁死(每周一都一样),而是每天顺着池子走,池子多大就多少天一循环。
     // 仍然是"同一天全球同一个挑战"(按日期确定),满足共享挑战的设计。
@@ -578,9 +584,7 @@ const getDailyChallengeIndex = (day) => {
     return ((daysSince % len) + len) % len;
 };
 
-const TEST_DAILY_DAY_OVERRIDE = '2026-07-14';
-
-const getDailySpec = (day = TEST_DAILY_DAY_OVERRIDE || getChinaDayKey()) => {
+const getDailySpec = (day = getDayKey()) => {
     const challengeIndex = getDailyChallengeIndex(day);
     let challenge = DAILY_CHALLENGES[challengeIndex % DAILY_CHALLENGES.length];
     // 测试用:?daily=<id> 强制预览指定的每日挑战(如 schulte-letters / schulte-grid6)
@@ -847,6 +851,430 @@ const buildRetentionSummary = (data) => {
     };
 };
 
+const formatWeeklySeconds = (seconds, isEnglish) => {
+    const value = Number(seconds);
+    if (!Number.isFinite(value) || value <= 0) return isEnglish ? '-' : '-';
+    return isEnglish ? `${value}s` : `${value}秒`;
+};
+
+const getWeeklyBrainReportEvents = (retentionData, dailyProgress, today, preview = false) => {
+    if (preview) {
+        const weekDays = getWeeklyDailyDays({}, today).map(item => item.day);
+        return [
+            { name: 'game_complete', day: weekDays[0], task: 'schulte', dailyTask: 'schulte', score: 420, durationSeconds: 68, correct: 25, incorrect: 1 },
+            { name: 'game_complete', day: weekDays[1], task: 'stroop', dailyTask: 'stroop', score: 510, durationSeconds: 60, correct: 28, incorrect: 3 },
+            { name: 'game_complete', day: weekDays[2], task: 'schulte', dailyTask: 'schulte', score: 560, durationSeconds: 54, correct: 25, incorrect: 0 },
+            { name: 'game_complete', day: weekDays[3], task: 'nback', dailyTask: 'nback', score: 360, durationSeconds: 60, correct: 11, incorrect: 2 },
+            { name: 'game_complete', day: weekDays[4], task: 'schulte', dailyTask: 'schulte', score: 640, durationSeconds: 47, correct: 25, incorrect: 0 },
+            { name: 'game_complete', day: weekDays[4], task: 'setgame', dailyTask: 'setgame', score: 300, durationSeconds: 60, correct: 6, incorrect: 1 }
+        ];
+    }
+
+    return (retentionData.events || []).filter(event => event.name === 'game_complete');
+};
+
+const getTrainingRecordEventDay = (event) => event.dailyDay || event.day || (event.at ? getDayKey(new Date(event.at)) : null);
+
+const buildTrainingRecordData = ({ retentionData, dailyProgress, today, taskTitle, isEnglish, range = 'week', preview = false }) => {
+    const todayKey = typeof today === 'string' ? today : getDayKey(today);
+    const todayDate = new Date(`${todayKey}T00:00:00`);
+    let periodStart = new Date(todayDate);
+    let periodEnd = new Date(todayDate);
+
+    if (range === 'week') {
+        const week = getWeeklyDailyDays({}, todayKey);
+        periodStart = new Date(`${week[0].day}T00:00:00`);
+        periodEnd = new Date(`${week[6].day}T00:00:00`);
+    } else if (range === 'month') {
+        periodStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+        periodEnd = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+    }
+
+    const startKey = getDayKey(periodStart);
+    const endKey = getDayKey(periodEnd);
+    const allEvents = getWeeklyBrainReportEvents(retentionData, dailyProgress, todayKey, preview)
+        .filter(event => getTrainingRecordEventDay(event));
+    const events = allEvents.filter(event => {
+        const day = getTrainingRecordEventDay(event);
+        return day >= startKey && day <= endKey;
+    });
+    const completedDays = new Set([
+        ...events.map(getTrainingRecordEventDay),
+        ...Object.entries(dailyProgress.days || {})
+            .filter(([day, value]) => value?.completed && day >= startKey && day <= endKey)
+            .map(([day]) => day)
+    ]).size;
+    const totalCorrect = events.reduce((sum, event) => sum + (Number(event.correct) || 0), 0);
+    const totalIncorrect = events.reduce((sum, event) => sum + (Number(event.incorrect) || 0), 0);
+    const attempts = totalCorrect + totalIncorrect;
+    const accuracy = attempts ? Math.round((totalCorrect / attempts) * 100) : 0;
+    const scoreValues = events
+        .map(event => Number(event.score || 0))
+        .filter(value => Number.isFinite(value) && value > 0);
+    const durationSeconds = events.reduce((sum, event) => sum + (Number(event.durationSeconds) || 0), 0);
+    const taskCounts = events.reduce((acc, event) => {
+        const task = event.dailyTask || event.task || 'training';
+        acc[task] = (acc[task] || 0) + 1;
+        return acc;
+    }, {});
+    const taskMix = Object.entries(taskCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([task, count]) => ({ task, count, name: taskTitle(task) }));
+    const taskPerformance = Object.entries(taskCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([task, count]) => {
+            const taskEvents = events.filter(event => (event.dailyTask || event.task || 'training') === task);
+            const taskCorrect = taskEvents.reduce((sum, event) => sum + (Number(event.correct) || 0), 0);
+            const taskIncorrect = taskEvents.reduce((sum, event) => sum + (Number(event.incorrect) || 0), 0);
+            const taskAttempts = taskCorrect + taskIncorrect;
+            const taskScores = taskEvents.map(event => Number(event.score || 0)).filter(value => Number.isFinite(value) && value > 0);
+            const taskTimes = taskEvents.map(event => Number(event.durationSeconds || 0)).filter(value => value > 0);
+            const metric = task === 'schulte' && taskTimes.length
+                ? { value: Math.min(...taskTimes), type: 'time' }
+                : taskAttempts
+                    ? { value: Math.round((taskCorrect / taskAttempts) * 100), type: 'accuracy' }
+                    : taskScores.length
+                        ? { value: Math.max(...taskScores), type: 'score' }
+                        : { value: count, type: 'sessions' };
+            return { task, count, name: taskTitle(task), metric };
+        });
+    const schulteTimes = events
+        .filter(event => (event.dailyTask || event.task) === 'schulte')
+        .map(event => Number(event.durationSeconds || 0))
+        .filter(value => value > 0);
+
+    const heatmapDataStartDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    const heatmapDataEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+    const heatmapDataStartKey = getDayKey(heatmapDataStartDate);
+    const heatmapDataEndKey = getDayKey(heatmapDataEndDate);
+    const heatmapCounts = allEvents.reduce((acc, event) => {
+        const day = getTrainingRecordEventDay(event);
+        if (day && day >= heatmapDataStartKey && day <= todayKey && day <= heatmapDataEndKey) acc[day] = (acc[day] || 0) + 1;
+        return acc;
+    }, {});
+    Object.entries(dailyProgress.days || {}).forEach(([day, value]) => {
+        if (value?.completed && day >= heatmapDataStartKey && day <= todayKey && day <= heatmapDataEndKey) {
+            heatmapCounts[day] = Math.max(1, heatmapCounts[day] || 0);
+        }
+    });
+    const heatmapLeadingBlanks = (heatmapDataStartDate.getDay() + 6) % 7;
+    const heatmapDayCount = heatmapDataEndDate.getDate();
+    const heatmapSlotCount = Math.ceil((heatmapLeadingBlanks + heatmapDayCount) / 7) * 7;
+    const heatmap = Array.from({ length: heatmapSlotCount }, (_, index) => {
+        if (index < heatmapLeadingBlanks || index >= heatmapLeadingBlanks + heatmapDayCount) {
+            return { day: null, count: null, level: -1, empty: true };
+        }
+        const date = new Date(heatmapDataStartDate);
+        date.setDate(date.getDate() + (index - heatmapLeadingBlanks));
+        const day = getDayKey(date);
+        const isFuture = day > todayKey;
+        const count = isFuture ? null : (heatmapCounts[day] || 0);
+        return {
+            day,
+            count,
+            level: isFuture ? -1 : (count === 0 ? 0 : Math.min(4, count)),
+            empty: false
+        };
+    });
+    const heatmapCompletedDays = heatmap.filter(cell => cell.count > 0).length;
+    const heatmapSessions = heatmap.reduce((sum, cell) => sum + (cell.count || 0), 0);
+    const lifetimeTrainingDays = new Set([
+        ...allEvents.map(getTrainingRecordEventDay).filter(Boolean),
+        ...Object.entries(dailyProgress.days || {})
+            .filter(([, value]) => value?.completed)
+            .map(([day]) => day)
+    ]).size;
+    const dayDetails = allEvents.reduce((acc, event) => {
+        const day = getTrainingRecordEventDay(event);
+        if (!day) return acc;
+        if (!acc[day]) acc[day] = { sessions: 0, durationSeconds: 0, correct: 0, incorrect: 0, bestScore: 0, tasks: {} };
+        const detail = acc[day];
+        const task = event.dailyTask || event.task || 'training';
+        const score = Number(event.score || 0);
+        detail.sessions += 1;
+        detail.durationSeconds += Number(event.durationSeconds) || 0;
+        detail.correct += Number(event.correct) || 0;
+        detail.incorrect += Number(event.incorrect) || 0;
+        detail.bestScore = Math.max(detail.bestScore, Number.isFinite(score) ? score : 0);
+        detail.tasks[task] = (detail.tasks[task] || 0) + 1;
+        return acc;
+    }, {});
+    Object.entries(dailyProgress.days || {}).forEach(([day, value]) => {
+        if (value?.completed && !dayDetails[day]) dayDetails[day] = { sessions: 1, durationSeconds: 0, correct: 0, incorrect: 0, bestScore: 0, tasks: { [value.task || 'daily']: 1 } };
+    });
+    Object.values(dayDetails).forEach(detail => {
+        const detailAttempts = detail.correct + detail.incorrect;
+        detail.accuracy = detailAttempts ? Math.round((detail.correct / detailAttempts) * 100) : null;
+        detail.topTask = Object.entries(detail.tasks).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    });
+    let heatmapStreak = 0;
+    for (let offset = 0; offset < 31; offset += 1) {
+        const date = new Date(todayDate);
+        date.setDate(date.getDate() - offset);
+        if ((heatmapCounts[getDayKey(date)] || 0) > 0) heatmapStreak += 1;
+        else break;
+    }
+    const inBounds = (day, start, end) => day >= getDayKey(start) && day <= getDayKey(end);
+    let buckets = [];
+    if (range === 'day') {
+        buckets = Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(todayDate);
+            date.setDate(date.getDate() - (6 - index));
+            const day = getDayKey(date);
+            return { key: day, label: day.slice(5).replace('-', '/'), start: date, end: date };
+        });
+    } else if (range === 'week') {
+        buckets = Array.from({ length: 4 }, (_, index) => {
+            const anchor = getOffsetDayKey(todayKey, -(3 - index) * 7);
+            const week = getWeeklyDailyDays({}, anchor);
+            return {
+                key: week[0].day,
+                label: isEnglish ? `W${index + 1}` : `第${index + 1}周`,
+                start: new Date(`${week[0].day}T00:00:00`),
+                end: new Date(`${week[6].day}T00:00:00`)
+            };
+        });
+    } else {
+        buckets = Array.from({ length: 6 }, (_, index) => {
+            const date = new Date(todayDate.getFullYear(), todayDate.getMonth() - (5 - index), 1);
+            const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            return {
+                key: getDayKey(date),
+                label: isEnglish ? date.toLocaleString('en-US', { month: 'short' }) : `${date.getMonth() + 1}月`,
+                start: date,
+                end
+            };
+        });
+    }
+
+    const bars = buckets.map(bucket => ({
+        ...bucket,
+        count: allEvents.filter(event => inBounds(getTrainingRecordEventDay(event), bucket.start, bucket.end)).length
+    }));
+    const maxBar = Math.max(1, ...bars.map(item => item.count));
+    const performanceBars = buckets.map(bucket => {
+        const bucketEvents = allEvents.filter(event => inBounds(getTrainingRecordEventDay(event), bucket.start, bucket.end));
+        const correct = bucketEvents.reduce((sum, event) => sum + (Number(event.correct) || 0), 0);
+        const incorrect = bucketEvents.reduce((sum, event) => sum + (Number(event.incorrect) || 0), 0);
+        const bucketAttempts = correct + incorrect;
+        const accuracy = bucketAttempts ? Math.round((correct / bucketAttempts) * 100) : 0;
+        return {
+            ...bucket,
+            accuracy,
+            percent: bucketAttempts ? accuracy : 0,
+            hasData: bucketAttempts > 0
+        };
+    });
+    const hasData = events.length > 0 || completedDays > 0;
+    const todaySessions = heatmapCounts[todayKey] || 0;
+    const topTask = taskMix[0] || null;
+    const growthHeadline = isEnglish
+        ? (todaySessions ? `${todaySessions} session${todaySessions === 1 ? '' : 's'} today` : `${heatmapCompletedDays} active day${heatmapCompletedDays === 1 ? '' : 's'} this month`)
+        : (todaySessions ? `今天完成 ${todaySessions} 局训练` : `本月已经训练 ${heatmapCompletedDays} 天`);
+    const growthSummary = isEnglish
+        ? (heatmapStreak >= 3 ? `${heatmapStreak} days in a row. Your rhythm is becoming a habit.` : 'Small, repeatable sessions are how progress starts to show.')
+        : (heatmapStreak >= 3 ? `已经连续 ${heatmapStreak} 天，你正在把训练变成习惯。` : '稳定地完成几次短训练，变化就会慢慢显现。');
+    const preferenceSummary = topTask
+        ? (isEnglish ? `You return to ${topTask.name} most often.` : `你最近最常回到「${topTask.name}」。`)
+        : (isEnglish ? 'Complete a few games to reveal your training preference.' : '完成几局训练后，这里会显示你的训练偏好。');
+    const effectSummary = !hasData
+        ? (isEnglish ? 'Complete a game to reveal your performance pattern.' : '完成一局训练后，这里会显示你的表现变化。')
+        : accuracy >= 90
+            ? (isEnglish ? 'Your responses are staying steady.' : '你的答题状态正在变得稳定。')
+            : accuracy >= 75
+                ? (isEnglish ? 'Your rhythm is taking shape. Keep one clean session going.' : '你的训练节奏正在成形，再保持一局干净的训练。')
+                : (isEnglish ? 'A little more consistency will make this pattern clearer.' : '再多一点稳定性，你的变化会更清楚。');
+
+    return {
+        startKey,
+        endKey,
+        completedDays,
+        totalSessions: events.length,
+        totalMinutes: Math.round(durationSeconds / 60),
+        accuracy,
+        bestScore: scoreValues.length ? Math.max(...scoreValues) : 0,
+        taskMix,
+        taskPerformance,
+        schulteFastest: schulteTimes.length ? Math.min(...schulteTimes) : 0,
+        heatmap,
+        heatmapCompletedDays,
+        heatmapSessions,
+        lifetimeTrainingDays,
+        heatmapStreak,
+        dayDetails,
+        todaySessions,
+        growthHeadline,
+        growthSummary,
+        preferenceSummary,
+        monthLabel: isEnglish
+            ? todayDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+            : `${todayDate.getFullYear()}年${todayDate.getMonth() + 1}月`,
+        bars: bars.map(item => ({ ...item, percent: Math.round((item.count / maxBar) * 100) })),
+        performanceBars,
+        effectSummary,
+        hasData
+    };
+};
+
+const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle, isEnglish, preview = false }) => {
+    const weekDays = getWeeklyDailyDays(dailyProgress.days, today);
+    const weekStart = weekDays[0]?.day || today;
+    const previousWeekDays = getWeeklyDailyDays(dailyProgress.days, getOffsetDayKey(weekStart, -1));
+    const weekSet = new Set(weekDays.map(item => item.day));
+    const previousWeekSet = new Set(previousWeekDays.map(item => item.day));
+    const allCompletions = getWeeklyBrainReportEvents(retentionData, dailyProgress, today, preview);
+    const weekCompletions = allCompletions.filter(event => {
+        const eventDay = event.dailyDay || event.day || (event.at ? getDayKey(new Date(event.at)) : null);
+        return eventDay && weekSet.has(eventDay);
+    });
+    const previousWeekCompletions = preview
+        ? [
+            { name: 'game_complete', day: getOffsetDayKey(weekStart, -7), task: 'schulte', score: 380, durationSeconds: 52, correct: 22, incorrect: 3 },
+            { name: 'game_complete', day: getOffsetDayKey(weekStart, -6), task: 'stroop', score: 420, durationSeconds: 60, correct: 22, incorrect: 5 },
+            { name: 'game_complete', day: getOffsetDayKey(weekStart, -4), task: 'schulte', score: 480, durationSeconds: 51, correct: 24, incorrect: 2 }
+        ]
+        : allCompletions.filter(event => {
+            const eventDay = event.dailyDay || event.day || (event.at ? getDayKey(new Date(event.at)) : null);
+            return eventDay && previousWeekSet.has(eventDay);
+        });
+    const completedDays = preview
+        ? Math.min(5, WEEKLY_DAILY_GOAL)
+        : weekDays.filter(item => item.completed).length;
+    const activeTrainingDays = new Set(weekCompletions.map(event => event.dailyDay || event.day).filter(Boolean)).size;
+    const taskCounts = weekCompletions.reduce((acc, event) => {
+        const task = event.dailyTask || event.task || 'schulte';
+        acc[task] = (acc[task] || 0) + 1;
+        return acc;
+    }, {});
+    const topTaskEntry = Object.entries(taskCounts).sort((a, b) => b[1] - a[1])[0];
+    const topTask = topTaskEntry?.[0] || null;
+    const topTaskCount = topTaskEntry?.[1] || 0;
+    const scoreValues = weekCompletions.map(event => Number(event.score || 0)).filter(value => Number.isFinite(value) && value > 0);
+    const bestScore = scoreValues.length ? Math.max(...scoreValues) : 0;
+    const totalCorrect = weekCompletions.reduce((sum, event) => sum + (Number(event.correct) || 0), 0);
+    const totalIncorrect = weekCompletions.reduce((sum, event) => sum + (Number(event.incorrect) || 0), 0);
+    const schulteTimes = weekCompletions
+        .filter(event => (event.dailyTask || event.task) === 'schulte')
+        .map(event => Number(event.durationSeconds || 0))
+        .filter(value => Number.isFinite(value) && value > 0);
+    const fastestSchulte = schulteTimes.length ? Math.min(...schulteTimes) : 0;
+    const avgSchulte = schulteTimes.length
+        ? Math.round(schulteTimes.reduce((sum, value) => sum + value, 0) / schulteTimes.length)
+        : 0;
+    let topTaskName = isEnglish ? 'Training' : '训练';
+    if (topTask && taskTitle) {
+        try {
+            topTaskName = taskTitle(topTask);
+        } catch (error) {
+            topTaskName = isEnglish ? 'Training' : '训练';
+        }
+    }
+    const weekEnd = weekDays[6]?.day || today;
+    const previousCompletedDays = preview
+        ? 3
+        : previousWeekDays.filter(item => item.completed).length;
+    const previousScoreValues = previousWeekCompletions
+        .map(event => Number(event.score || 0))
+        .filter(value => Number.isFinite(value) && value > 0);
+    const previousBestScore = previousScoreValues.length ? Math.max(...previousScoreValues) : 0;
+    const previousSchulteTimes = previousWeekCompletions
+        .filter(event => (event.dailyTask || event.task) === 'schulte')
+        .map(event => Number(event.durationSeconds || 0))
+        .filter(value => Number.isFinite(value) && value > 0);
+    const previousFastestSchulte = previousSchulteTimes.length ? Math.min(...previousSchulteTimes) : 0;
+    const previousTopTaskCounts = previousWeekCompletions.reduce((acc, event) => {
+        const task = event.dailyTask || event.task || 'schulte';
+        acc[task] = (acc[task] || 0) + 1;
+        return acc;
+    }, {});
+    const previousTopTaskEntry = Object.entries(previousTopTaskCounts).sort((a, b) => b[1] - a[1])[0];
+    const previousTopTask = previousTopTaskEntry?.[0] || null;
+    let comparison;
+    if (fastestSchulte && previousFastestSchulte) {
+        const delta = previousFastestSchulte - fastestSchulte;
+        comparison = delta > 0
+            ? (isEnglish ? `${delta}s faster on Schulte` : `舒尔特比上周快了 ${delta} 秒`)
+            : delta < 0
+                ? (isEnglish ? `${Math.abs(delta)}s to go on Schulte` : `舒尔特距离上周还差 ${Math.abs(delta)} 秒`)
+                : (isEnglish ? 'Schulte time held steady' : '舒尔特用时和上周持平');
+    } else if (bestScore && previousBestScore) {
+        const delta = bestScore - previousBestScore;
+        comparison = delta > 0
+            ? (isEnglish ? `Best score up ${delta} points` : `最高分比上周高了 ${delta} 分`)
+            : delta < 0
+                ? (isEnglish ? `Best score is ${Math.abs(delta)} points away` : `最高分距离上周还差 ${Math.abs(delta)} 分`)
+                : (isEnglish ? 'Best score held steady' : '最高分和上周持平');
+    } else if (completedDays !== previousCompletedDays) {
+        const delta = completedDays - previousCompletedDays;
+        comparison = delta > 0
+            ? (isEnglish ? `${delta} more return day${delta === 1 ? '' : 's'}` : `比上周多回来了 ${delta} 天`)
+            : (isEnglish ? `${Math.abs(delta)} more day${Math.abs(delta) === 1 ? '' : 's'} to match last week` : `距离上周还差 ${Math.abs(delta)} 天`);
+    } else {
+        comparison = isEnglish ? 'A steady week is still a real week.' : '稳定完成，本身就是进步。';
+    }
+
+    const hasData = weekCompletions.length > 0 || completedDays > 0;
+    let persona;
+    if (!hasData) persona = isEnglish ? 'First page is waiting' : '第一份报告待生成';
+    else if (completedDays >= WEEKLY_DAILY_GOAL) persona = isEnglish ? 'Steady brain ritual' : '稳定回访型大脑';
+    else if (fastestSchulte) persona = isEnglish ? 'Visual search is waking up' : '视觉搜索正在升温';
+    else if (totalIncorrect <= 2 && weekCompletions.length >= 3) persona = isEnglish ? 'Careful and steady' : '稳稳推进型';
+    else persona = isEnglish ? 'Momentum is building' : '节奏正在建立';
+
+    const summary = !hasData
+        ? (isEnglish
+            ? 'Finish a few rounds this week and your report will turn them into a small growth story.'
+            : '本周完成几局训练后，这里会把记录整理成一份小小的成长报告。')
+        : (isEnglish
+            ? `This week you trained on ${Math.max(completedDays, activeTrainingDays)} day${Math.max(completedDays, activeTrainingDays) === 1 ? '' : 's'}. Your most repeated task was ${topTaskName}.`
+            : `本周你训练了 ${Math.max(completedDays, activeTrainingDays)} 天，最常练的是「${topTaskName}」。`);
+    const highlight = fastestSchulte
+        ? (isEnglish
+            ? `Your fastest Schulte run was ${formatWeeklySeconds(fastestSchulte, isEnglish)}. Time is the clearest signal for visual search growth.`
+            : `舒尔特最快完成用时是 ${formatWeeklySeconds(fastestSchulte, isEnglish)}，这是目前最直观的视觉搜索成长信号。`)
+        : bestScore
+            ? (isEnglish
+                ? `Your best score this week was ${bestScore}. A few more sessions will make the pattern clearer.`
+                : `本周最高分是 ${bestScore}。再多几次记录后，成长曲线会更清楚。`)
+            : (isEnglish
+                ? 'Daily check-ins are ready. The report gets more useful after the first completed game.'
+                : '每日打卡已经准备好。完成第一局后，报告会更有内容。');
+    const suggestion = !hasData
+        ? (isEnglish ? 'Start with today’s Daily. One clean record is enough to begin.' : '先从今天的 Daily 开始，一条干净记录就够开启报告。')
+        : completedDays < 3
+            ? (isEnglish ? 'Next week, aim for 3 return days before chasing high scores.' : '下周先把回访稳定到 3 天，再追高分会更有感觉。')
+            : fastestSchulte
+                ? (isEnglish ? 'Next week, watch whether your Schulte time can drop by another 2 seconds.' : '下周可以观察舒尔特用时能不能再少 2 秒。')
+                : (isEnglish ? 'Keep the same rhythm and compare yourself with last week, not with everyone else.' : '保持现在的节奏，先和上周的自己比，不急着和别人比。');
+
+    return {
+        hasData,
+        weekStart,
+        weekEnd,
+        completedDays,
+        activeTrainingDays,
+        totalSessions: weekCompletions.length,
+        topTask,
+        topTaskName,
+        topTaskCount,
+        bestScore,
+        totalCorrect,
+        totalIncorrect,
+        fastestSchulte,
+        avgSchulte,
+        previousSessions: previousWeekCompletions.length,
+        previousCompletedDays,
+        previousBestScore,
+        previousFastestSchulte,
+        previousTopTask,
+        comparison,
+        persona,
+        summary,
+        highlight,
+        suggestion
+    };
+};
+
 function App() {
     const DEFAULT_TASK_BESTS = { schulte: 0, stroop: 0, nback: 0, setgame: 0, neuroncount: 0 };
     const urlParams = new URLSearchParams(window.location.search);
@@ -862,7 +1290,12 @@ function App() {
         } catch (e) { return null; }
     })();
     const [isOwner, setIsOwner] = useState(() => urlParams.get('owner') === '1');
-    const [view, setView] = useState(() => (urlParams.has('analytics') && urlParams.get('owner') === '1') ? 'analytics' : 'home');
+    const [view, setView] = useState(() => {
+        if (urlParams.has('analytics') && urlParams.get('owner') === '1') return 'analytics';
+        if (urlParams.has('trainingRecordsPreview')) return 'training-records';
+        if (urlParams.has('my-page-preview') || urlParams.has('myPagePreview')) return 'settings';
+        return 'home';
+    });
     const [mode, setMode] = useState('normal');
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -872,6 +1305,20 @@ function App() {
     const [isError, setIsError] = useState(false);
     const [answerFeedback, setAnswerFeedback] = useState(null);
     const [showInfo, setShowInfo] = useState(null);
+    const [weeklyReceiptOpen, setWeeklyReceiptOpen] = useState(false);
+    const [weeklyReportStep, setWeeklyReportStep] = useState(0);
+    const [weeklyReportCount, setWeeklyReportCount] = useState(0);
+    const [weeklyReportScore, setWeeklyReportScore] = useState(0);
+    const weeklyReportSoundTickRef = useRef({ count: 0, scoreStep: -1, lastAt: 0 });
+    const [weeklyReportScope, setWeeklyReportScope] = useState('current');
+    const [weeklyReportReturnView, setWeeklyReportReturnView] = useState('settings');
+    const [recordsRange, setRecordsRange] = useState('week');
+    const [selectedTrainingDay, setSelectedTrainingDay] = useState(null);
+    const [showWeeklyReportPrompt, setShowWeeklyReportPrompt] = useState(false);
+    const [showFirstPlayNudge, setShowFirstPlayNudge] = useState(() => {
+        if (urlParams.has('firstPlayPreview')) return true;
+        try { return !localStorage.getItem('pfl_first_play_nudge_done'); } catch (e) { return false; }
+    });
     const [lang, setLang] = useState(() => getInitialLanguage());
     const [retentionData, setRetentionData] = useState(() => readRetentionData());
     const [dailyProgress, setDailyProgress] = useState(() => readDailyProgress());
@@ -889,7 +1336,7 @@ function App() {
     });
     const ui = UI_TEXT[lang];
     const isEnglish = lang === 'en';
-    const isGameView = !['home', 'result', 'analytics'].includes(view);
+    const isGameView = !['home', 'result', 'analytics', 'settings', 'settings-daily', 'weekly-report', 'training-records'].includes(view);
     const isDailyMode = mode === 'daily';
     const isInfiniteMode = mode === 'infinite';
     const isChallengeDifficulty = mode === 'hard' || mode === 'comp' || isDailyMode;
@@ -900,6 +1347,7 @@ function App() {
     const dailyPreviewParams = new URLSearchParams(window.location.search);
     const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
     const isDailyCelebratePreview = dailyPreviewParams.has('dailyCelebratePreview');
+    const isWeeklyReportPreview = dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview');
     const previewDailyWeekDays = isDailyRewardPreview
         ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
         : dailyWeekDays;
@@ -991,8 +1439,6 @@ function App() {
     const setLanguage = (nextLang) => {
         playSound('tap');
         setLang(nextLang);
-        setShowSettings(false);
-
         try {
             localStorage.setItem('prefrontal_lab_lang', nextLang);
         } catch (error) {
@@ -1128,6 +1574,31 @@ function App() {
         setShowUpdateNote(false);
     };
 
+    const closeFirstPlayNudge = (shouldStart = false) => {
+        playSound('tap');
+        try { localStorage.setItem('pfl_first_play_nudge_done', 'true'); } catch (e) { }
+        setShowFirstPlayNudge(false);
+        if (shouldStart) {
+            setMode('normal');
+            startChallenge('schulte');
+        }
+    };
+
+    const markWeeklyReportPromptSeen = () => {
+        try {
+            localStorage.setItem(`pfl_weekly_report_prompt_${dailySpec.day}`, 'seen');
+        } catch (error) { }
+        setShowWeeklyReportPrompt(false);
+    };
+
+    const openWeeklyReportPrompt = () => {
+        playSound('reportStep1');
+        markWeeklyReportPromptSeen();
+        setWeeklyReportScope('previous');
+        setWeeklyReportReturnView('home');
+        setView('weekly-report');
+    };
+
     const goHomeMode = (nextMode) => {
         if (nextMode === 'hard' && !history.isHardUnlocked) {
             playSound('error');
@@ -1159,6 +1630,16 @@ function App() {
             icon: 'swords',
             active: view === 'home' && mode === 'comp',
             onClick: () => goHomeMode('comp')
+        },
+        {
+            key: 'settings',
+            label: ui.settings,
+            icon: 'circle-user-round',
+            active: view === 'settings' || view === 'settings-daily' || view === 'training-records',
+            onClick: () => {
+                playSound('tap');
+                setView('settings');
+            }
         }
     ];
 
@@ -1238,7 +1719,7 @@ function App() {
     }, [isEnglish]);
 
     useEffect(() => {
-        const shouldUsePageScroll = view === 'analytics' || (view === 'home' && mode === 'daily');
+        const shouldUsePageScroll = view === 'analytics' || view === 'settings' || view === 'settings-daily' || view === 'weekly-report' || view === 'training-records' || (view === 'home' && mode === 'daily');
         document.body.classList.toggle('is-app-scrollable', shouldUsePageScroll);
         document.documentElement.classList.toggle('is-app-scrollable', shouldUsePageScroll);
         return () => {
@@ -1467,6 +1948,312 @@ function App() {
         },
 
     };
+
+    const weeklyReport = buildWeeklyBrainReport({
+        retentionData,
+        dailyProgress,
+        today: weeklyReportScope === 'previous' ? getOffsetDayKey(dailySpec.day, -1) : dailySpec.day,
+        taskTitle: getTaskTitle,
+        isEnglish,
+        preview: isWeeklyReportPreview
+    });
+    const mondayWeeklyReport = buildWeeklyBrainReport({
+        retentionData,
+        dailyProgress,
+        today: getOffsetDayKey(dailySpec.day, -1),
+        taskTitle: getTaskTitle,
+        isEnglish,
+        preview: isWeeklyReportPreview
+    });
+    const isMonday = new Date(`${dailySpec.day}T12:00:00`).getDay() === 1;
+    const isWeeklyReportPromptPreview = urlParams.has('weeklyReportPopupPreview');
+    const trainingRecords = buildTrainingRecordData({
+        retentionData,
+        dailyProgress,
+        today: dailySpec.day,
+        taskTitle: getTaskTitle,
+        isEnglish,
+        range: recordsRange,
+        preview: urlParams.has('trainingRecordsPreview')
+    });
+    const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview') && (urlParams.has('trainingRecordsPreview') || trainingRecords.lifetimeTrainingDays >= 7);
+    const trainingRecordsMaxTask = Math.max(1, ...trainingRecords.taskMix.map(item => item.count));
+    const selectedTrainingDayDetail = selectedTrainingDay ? trainingRecords.dayDetails[selectedTrainingDay] : null;
+    const selectedTrainingDayTask = selectedTrainingDayDetail?.topTask ? getTaskTitle(selectedTrainingDayDetail.topTask) : null;
+    const weeklyReportScoreTarget = Math.max(0, Number(weeklyReport.bestScore) || 0);
+    const weeklyReportText = isEnglish
+        ? {
+            title: 'Weekly Brain Report',
+            eyebrow: 'Personal growth',
+            emptyCta: 'Start with today',
+            readyCta: 'View report',
+            receiptKicker: 'WEEKLY RECAP',
+            receiptTitle: 'Your brain receipt',
+            receiptSubtitle: 'A small record of the work you put in this week.',
+            receiptOpen: 'Open this week',
+            receiptClose: 'Close receipt',
+            reportPageKicker: 'WEEKLY RECAP',
+            reportPageTitle: 'Your week in focus',
+            reportPageIntro: 'A few signals from the time you gave your brain.',
+            reportDaysLabel: 'Training days',
+            reportDaysCopy: 'You came back and put in the work.',
+            reportTaskLabel: 'Most practiced',
+            reportTaskCopy: 'This was your most familiar challenge.',
+            reportBestLabel: 'Best record',
+            reportBestCopy: 'Your strongest score this week.',
+            reportCompareLabel: 'Compared with last week',
+            reportCompareCopy: 'Progress is easier to feel when you compare yourself with yourself.',
+            reportLastWeek: 'Last week',
+            reportThisWeek: 'This week',
+            reportReady: 'Ready for next week?',
+            reportReadyCopy: 'Keep the rhythm going. One small session is enough to return.',
+            reportEnter: "Start Today's Challenge",
+            reportViewDaily: "View Today's Challenge",
+            days: 'days',
+            sessions: 'sessions',
+            best: 'Best',
+            focus: 'Focus task',
+            time: 'Schulte time',
+            accuracy: 'Clean hits',
+            note: 'Next tiny goal'
+        }
+        : {
+            title: '本周脑力报告',
+            eyebrow: '个人成长',
+            emptyCta: '从今天开始',
+            readyCta: '查看报告',
+            receiptKicker: '本周记录',
+            receiptTitle: '本周脑力收据',
+            receiptSubtitle: '把这一周的每一次训练，收进一张小小的成长记录里。',
+            receiptOpen: '打开本周记录',
+            receiptClose: '收起本周记录',
+            reportPageKicker: '本周记录',
+            reportPageTitle: '这一周，你的专注轨迹',
+            reportPageIntro: '把你给大脑的时间，变成几条看得见的成长信号。',
+            reportDaysLabel: '本周训练',
+            reportDaysCopy: '你一次次回来了，也一次次完成了训练。',
+            reportTaskLabel: '最常练习',
+            reportTaskCopy: '这是这一周最熟悉的挑战。',
+            reportBestLabel: '最高记录',
+            reportBestCopy: '这是你本周最强的一次表现。',
+            reportCompareLabel: '比起上周',
+            reportCompareCopy: '和过去的自己比，进步会更清楚。',
+            reportLastWeek: '上周',
+            reportThisWeek: '本周',
+            reportReady: '准备好进入下一周了吗？',
+            reportReadyCopy: '保持现在的节奏，下一次回来就算继续前进。',
+            reportEnter: '开始今日挑战',
+            reportViewDaily: '查看今日挑战',
+            days: '天',
+            sessions: '局',
+            best: '最高分',
+            focus: '最常练',
+            time: '舒尔特用时',
+            accuracy: '答对/误触',
+            note: '下周小目标'
+        };
+    const weeklyReportIsPrevious = weeklyReportScope === 'previous';
+    const weeklyReportPageKicker = weeklyReportIsPrevious ? (isEnglish ? 'LAST WEEK RECAP' : '上周记录') : weeklyReportText.reportPageKicker;
+    const weeklyReportPageTitle = weeklyReportIsPrevious ? (isEnglish ? 'Your last week in focus' : '上周，你的专注轨迹') : weeklyReportText.reportPageTitle;
+    const weeklyReportDaysLabel = weeklyReportIsPrevious ? (isEnglish ? 'Last week training' : '上周训练') : weeklyReportText.reportDaysLabel;
+    const weeklyReportPreviousBarLabel = weeklyReportIsPrevious ? (isEnglish ? 'Week before' : '前一周') : weeklyReportText.reportLastWeek;
+    const weeklyReportCurrentBarLabel = weeklyReportIsPrevious ? (isEnglish ? 'Last week' : '上周') : weeklyReportText.reportThisWeek;
+
+    const settingsPageText = isEnglish
+        ? {
+            subtitle: 'Preferences, progress, and future account sync.',
+            accountTitle: 'Save Progress',
+            accountBody: 'Your records are saved on this device for now. Account sync will open later for cross-device progress.',
+            accountCta: 'Coming soon',
+            languageHint: 'Choose the default display language.',
+            soundHint: 'Controls tap, success, error, score, and reward sounds.',
+            dailyTitle: 'Training Records',
+            dailyBody: 'View your daily, weekly, and monthly training progress.',
+            dailyPageSubtitle: 'Your daily rhythm and weekly progress, in one place.',
+            backToSettings: 'Back to Settings',
+            dailyEnter: 'Open',
+            recordsSubtitle: 'A clear view of your practice rhythm and progress.',
+            recordsDay: 'Day',
+            recordsWeek: 'Week',
+            recordsMonth: 'Month',
+            recordsTrend: 'Performance',
+            recordsTrendHint: 'See how steady your responses are over time.',
+            recordsEffect: 'Accuracy trend',
+            recordsTrainingDays: 'Training days',
+            recordsSessions: 'Completed',
+            recordsMinutes: 'Minutes',
+            recordsAccuracy: 'Accuracy',
+            recordsBestScore: 'Best score',
+            recordsFrequency: 'Training frequency',
+            recordsHeatmap: 'Training rhythm',
+            recordsLess: 'Less',
+            recordsMore: 'More',
+            recordsCurrentStreak: 'Current streak',
+            recordsTaskMix: 'Your training preference',
+            recordsPreferenceHint: 'The challenges you keep coming back to.',
+            recordsSchulte: 'Schulte progress',
+            recordsTodayCta: "Start today's challenge",
+            recordsContinueCta: 'Continue training',
+            recordsTodayHint: 'One focused session is enough to keep the rhythm going.',
+            recordsDailyBridge: "Today's challenge",
+            recordsDailyDone: 'Completed today',
+            recordsDailyOpen: 'Open challenge',
+            recordsDailyAgain: 'Try again',
+            recordsSelectedDay: 'Day record',
+            recordsNoSessions: 'No sessions recorded',
+            recordsSessionCount: 'sessions',
+            recordsTaskLabel: 'Most practiced',
+            recordsPerformance: 'Task performance',
+            recordsNoTaskData: 'Keep training to reveal how each challenge feels over time.',
+            recordsNoData: 'Complete a game and your personal record will appear here.',
+            recordsBack: 'Back to Settings',
+            dailyCta: 'Open Daily',
+            reportCta: 'View weekly report',
+            dataTitle: 'Local Data',
+            dataBody: 'Current records are stored locally. Cloud sync will be added after accounts are ready.',
+            exportData: 'Export data',
+            localOnly: 'Local only'
+        }
+        : {
+            subtitle: '管理语言、音效、成长记录和未来同步。',
+            accountTitle: '保存进度',
+            accountBody: '目前记录会保存在这台设备上。之后开放账户后，可以同步 Daily streak 和历史记录。',
+            accountCta: '即将开放',
+            languageHint: '选择默认显示语言。',
+            soundHint: '控制点击、答对、答错、计分和奖励音效。',
+            dailyTitle: '训练记录',
+            dailyBody: '查看每日、每周和每月的训练数据与变化。',
+            dailyPageSubtitle: '查看每日挑战进度，也回顾这一周的成长轨迹。',
+            backToSettings: '返回设置',
+            dailyEnter: '进入',
+            recordsSubtitle: '清楚看见自己的训练节奏和变化。',
+            recordsDay: '日',
+            recordsWeek: '周',
+            recordsMonth: '月',
+            recordsTrend: '训练效果',
+            recordsTrendHint: '看看自己的状态是否变得更稳定。',
+            recordsEffect: '正确率变化',
+            recordsTrainingDays: '训练天数',
+            recordsSessions: '完成次数',
+            recordsMinutes: '训练分钟',
+            recordsAccuracy: '平均正确率',
+            recordsBestScore: '最高分',
+            recordsFrequency: '训练频率',
+            recordsHeatmap: '训练节奏',
+            recordsLess: '少',
+            recordsMore: '多',
+            recordsCurrentStreak: '当前连续',
+            recordsTaskMix: '你的训练偏好',
+            recordsPreferenceHint: '看看哪些挑战让你最愿意一次次回来。',
+            recordsSchulte: '舒尔特变化',
+            recordsTodayCta: '开始今日挑战',
+            recordsContinueCta: '继续训练',
+            recordsTodayHint: '完成一局专注训练，就能继续保持现在的节奏。',
+            recordsDailyBridge: '今日挑战',
+            recordsDailyDone: '今天已完成',
+            recordsDailyOpen: '进入挑战',
+            recordsDailyAgain: '再挑战一次',
+            recordsSelectedDay: '当天记录',
+            recordsNoSessions: '这一天还没有训练记录',
+            recordsSessionCount: '局',
+            recordsTaskLabel: '最常练习',
+            recordsPerformance: '各玩法表现',
+            recordsNoTaskData: '继续完成几局训练后，这里会显示每个玩法的表现。',
+            recordsNoData: '完成一局训练后，这里会出现你的个人记录。',
+            recordsBack: '返回设置',
+            dailyCta: '打开 Daily',
+            reportCta: '查看本周周报',
+            dataTitle: '本地数据',
+            dataBody: '当前记录仅保存在本地。登录功能完成后再接入云端同步。',
+            exportData: '导出数据',
+            localOnly: '本地保存'
+        };
+    const weeklyReportPromptText = isEnglish
+        ? {
+            title: 'Last week’s record is ready',
+            body: 'Take a quiet look at the work you put in last week.',
+            primary: 'View last week’s record',
+            secondary: 'Later'
+        }
+        : {
+            title: '上周训练记录已生成',
+            body: '看看上周的训练，给自己的进步留下一点记录。',
+            primary: '查看上周记录',
+            secondary: '稍后再看'
+        };
+
+    useEffect(() => {
+        if (view !== 'weekly-report') {
+            setWeeklyReportStep(0);
+            setWeeklyReportCount(0);
+            setWeeklyReportScore(0);
+            return undefined;
+        }
+
+        setWeeklyReportStep(0);
+        setWeeklyReportCount(0);
+        setWeeklyReportScore(0);
+        weeklyReportSoundTickRef.current = { count: 0, scoreStep: -1, lastAt: 0 };
+        const timers = [
+            setTimeout(() => { setWeeklyReportStep(1); playSound('reportStep1'); }, 260),
+            setTimeout(() => { setWeeklyReportStep(2); playSound('reportStep2'); }, 1250),
+            setTimeout(() => { setWeeklyReportStep(3); playSound('reportStep3'); }, 2200),
+            setTimeout(() => { setWeeklyReportStep(4); playSound('reportStep4'); }, 3150),
+            setTimeout(() => { setWeeklyReportStep(5); playSound('reportStep5'); }, 4100)
+        ];
+        const target = Math.max(0, Number(weeklyReport.completedDays) || 0);
+        let count = 0;
+        let countTimer;
+        const countStartTimer = setTimeout(() => {
+            countTimer = setInterval(() => {
+                if (target <= 0) {
+                    clearInterval(countTimer);
+                    return;
+                }
+                count = Math.min(target, count + Math.max(1, Math.ceil(target / 8)));
+                setWeeklyReportCount(count);
+                playSound('scoreTick');
+                if (count >= target) clearInterval(countTimer);
+            }, 90);
+        }, 300);
+        let scoreTimer;
+        const scoreStartTimer = setTimeout(() => {
+            let currentScore = 0;
+            scoreTimer = setInterval(() => {
+                if (weeklyReportScoreTarget <= 0) {
+                    clearInterval(scoreTimer);
+                    return;
+                }
+                currentScore = Math.min(weeklyReportScoreTarget, currentScore + Math.max(1, Math.ceil(weeklyReportScoreTarget / 28)));
+                setWeeklyReportScore(currentScore);
+                const scoreStep = Math.floor((currentScore / weeklyReportScoreTarget) * 10);
+                const now = Date.now();
+                if (scoreStep !== weeklyReportSoundTickRef.current.scoreStep && now - weeklyReportSoundTickRef.current.lastAt > 58) {
+                    weeklyReportSoundTickRef.current = { ...weeklyReportSoundTickRef.current, scoreStep, lastAt: now };
+                    playSound(scoreStep > 6 ? 'scoreTickHigh' : 'scoreTick');
+                }
+                if (currentScore >= weeklyReportScoreTarget) clearInterval(scoreTimer);
+            }, 34);
+        }, 2140);
+
+        return () => {
+            timers.forEach(timer => clearTimeout(timer));
+            clearTimeout(countStartTimer);
+            if (countTimer) clearInterval(countTimer);
+            clearTimeout(scoreStartTimer);
+            if (scoreTimer) clearInterval(scoreTimer);
+        };
+    }, [view, weeklyReport.completedDays, weeklyReportScoreTarget]);
+
+    useEffect(() => {
+        if (view !== 'home' || showUpdateNote || (!isMonday && !isWeeklyReportPromptPreview)) return;
+        if (!mondayWeeklyReport.hasData && !isWeeklyReportPromptPreview) return;
+        const promptKey = `pfl_weekly_report_prompt_${dailySpec.day}`;
+        try {
+            if (localStorage.getItem(promptKey)) return;
+        } catch (error) { }
+        setShowWeeklyReportPrompt(true);
+    }, [dailySpec.day, isMonday, isWeeklyReportPromptPreview, mondayWeeklyReport.hasData, showUpdateNote, view]);
 
     const [schulte, setSchulte] = useState({ grid: [], next: 1 });
     const [stroop, setStroop] = useState({ text: '', color: '', opts: [] });
@@ -2232,7 +3019,48 @@ function App() {
                 </>
             )}
 
-            {(view === 'home' || view === 'analytics') && (
+            {showWeeklyReportPrompt && view === 'home' && !showUpdateNote && (
+                <div className="weekly-report-prompt fixed inset-0 z-[105] flex items-center justify-center p-5 backdrop-blur-md bg-slate-900/35">
+                    <div className="weekly-report-prompt-card">
+                        <div className="weekly-report-prompt-icon">
+                            <Icon name="chart-no-axes-combined" className="w-6 h-6" />
+                        </div>
+                        <div className="weekly-report-prompt-kicker">WEEKLY RECORD</div>
+                        <h2>{weeklyReportPromptText.title}</h2>
+                        <p>{weeklyReportPromptText.body}</p>
+                        <button type="button" className="weekly-report-prompt-primary" onClick={openWeeklyReportPrompt}>
+                            <Icon name="arrow-right" className="w-4 h-4" />
+                            {weeklyReportPromptText.primary}
+                        </button>
+                        <button type="button" className="weekly-report-prompt-secondary" onClick={() => {
+                            playSound('tap');
+                            markWeeklyReportPromptSeen();
+                        }}>
+                            {weeklyReportPromptText.secondary}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showFirstPlayNudge && view === 'home' && mode === 'normal' && (!showUpdateNote || urlParams.has('suppressUpdate')) && (
+                <div className="first-play-nudge fixed inset-0 z-[100] flex items-center justify-center p-5">
+                    <div className="first-play-nudge-card" role="dialog" aria-modal="true">
+                        <div className="first-play-nudge-icon"><Icon name="target" className="w-6 h-6" /></div>
+                        <div className="first-play-nudge-kicker">{ui.firstPlayKicker}</div>
+                        <h2>{ui.firstPlayTitle}</h2>
+                        <p>{ui.firstPlayBody}</p>
+                        <button type="button" className="first-play-nudge-primary" onClick={() => closeFirstPlayNudge(true)}>
+                            <Icon name="play" className="w-4 h-4" />
+                            {ui.firstPlayStart}
+                        </button>
+                        <button type="button" className="first-play-nudge-secondary" onClick={() => closeFirstPlayNudge(false)}>
+                            {ui.firstPlayLater}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {(view === 'home' || view === 'analytics' || view === 'settings' || view === 'settings-daily') && (
                 <nav className="app-nav" aria-label="Primary navigation">
                     <div className="app-nav-brand">
                         <div className="app-nav-logo">
@@ -2251,18 +3079,20 @@ function App() {
                                 disabled={item.disabled}
                                 className={`app-nav-button is-${item.key} ${item.active ? 'is-active' : ''} ${item.disabled ? 'is-disabled' : ''}`}
                             >
-                                <Icon name={item.icon} className="w-5 h-5" />
+                                {item.key === 'settings' ? (
+                                    <span className="nav-avatar-glyph" aria-hidden="true" />
+                                ) : (
+                                    <Icon name={item.icon} className="w-5 h-5" />
+                                )}
                                 <span>{item.label}</span>
                             </button>
                         ))}
                     </div>
-                    {renderSettingsControl('app-nav-settings')}
                 </nav>
             )}
 
             {view === 'home' && (
                 <div className={`home-screen app-content-screen p-6 pt-10 flex flex-col items-center h-full overflow-y-auto no-scrollbar relative ${mode === 'daily' ? 'is-daily-home' : mode === 'comp' ? 'is-arena-home' : 'is-training-home'}`}>
-                    {renderSettingsControl('home-settings-control')}
                     <div className="home-mini-brand hidden w-full max-w-sm items-center gap-2 shrink-0">
                         <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl shadow-md flex items-center justify-center shrink-0">
                             <Icon name="brain-circuit" className="w-5 h-5" />
@@ -2339,117 +3169,119 @@ function App() {
 
                     <div className="task-section w-full max-w-sm mb-12 shrink-0">
                         {mode === 'daily' ? (
-                            <div
-                                data-analytics-task="daily"
-                                data-analytics-label={GAME_CLICK_LABELS.daily}
-                                className="daily-challenge-card bg-white rounded-[1.8rem] border-2 border-emerald-100 shadow-md overflow-hidden"
-                            >
-                                <div className={`daily-card-hero daily-theme-${dailySpec.task} p-5 text-white relative overflow-hidden`}>
-                                    <div className={`daily-hero-motif is-${dailySpec.task}`} aria-hidden="true">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <div className="relative z-10 flex items-start justify-between gap-4">
-                                        <div className="min-w-0">
-                                            <div className="text-[10px] font-black brand-text opacity-75">{ui.dailyTitle}</div>
-                                            <div className="mt-1 text-2xl font-black leading-tight">{dailyTheme.title}</div>
-                                            <div className="mt-1 text-xs font-extrabold opacity-95 leading-relaxed">{dailyTheme.subtitle}</div>
+                            <>
+                                <div
+                                    data-analytics-task="daily"
+                                    data-analytics-label={GAME_CLICK_LABELS.daily}
+                                    className="daily-challenge-card bg-white rounded-[1.8rem] border-2 border-emerald-100 shadow-md overflow-hidden"
+                                >
+                                    <div className={`daily-card-hero daily-theme-${dailySpec.task} p-5 text-white relative overflow-hidden`}>
+                                        <div className={`daily-hero-motif is-${dailySpec.task}`} aria-hidden="true">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
                                         </div>
-                                        <div className="daily-hero-task-icon w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur">
-                                            <Icon name={TASK_DATA[dailySpec.task].icon} className="w-6 h-6" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute -right-8 -bottom-10 opacity-15">
-                                        <Icon name="calendar-check" className="w-32 h-32" />
-                                    </div>
-                                </div>
-                                <div className="p-5">
-                                    <div className="daily-goal-box">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="daily-task-icon w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                                                <Icon name="target" className="w-5 h-5" />
-                                            </div>
+                                        <div className="relative z-10 flex items-start justify-between gap-4">
                                             <div className="min-w-0">
-                                                <div className="text-[10px] font-black text-emerald-600 brand-text">{ui.dailyToday}</div>
-                                                <div className="text-sm font-black text-slate-800 leading-tight">{getTaskTitle(dailySpec.task)}</div>
-                                                <div className="text-[11px] font-extrabold text-slate-600 mt-1">{dailyTheme.goal || ui.dailyGoal}</div>
-                                                <div className="daily-rule-row">
-                                                    <span><Icon name={dailySpec.completion === 'finish-grid' ? 'target' : 'timer'} className="w-3.5 h-3.5" />{dailyRuleLabel}</span>
-                                                    <span><Icon name="clock-3" className="w-3.5 h-3.5" />{dailyDurationLabel}</span>
-                                                </div>
+                                                <div className="text-[10px] font-black brand-text opacity-75">{ui.dailyTitle}</div>
+                                                <div className="mt-1 text-2xl font-black leading-tight">{dailyTheme.title}</div>
+                                                <div className="mt-1 text-xs font-extrabold opacity-95 leading-relaxed">{dailyTheme.subtitle}</div>
+                                            </div>
+                                            <div className="daily-hero-task-icon w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur">
+                                                <Icon name={TASK_DATA[dailySpec.task].icon} className="w-6 h-6" />
                                             </div>
                                         </div>
-                                        <div className={`daily-status-pill ${dailyRecord.completed ? 'is-complete' : ''}`}>
-                                            {dailyRecord.completed ? ui.dailyDone : ui.dailyCheckIn}
+                                        <div className="absolute -right-8 -bottom-10 opacity-15">
+                                            <Icon name="calendar-check" className="w-32 h-32" />
                                         </div>
                                     </div>
-
-                                    <div
-                                        className={`daily-week-panel ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''} ${activeDailyWeekAdvance ? 'is-advancing' : ''} ${shouldCelebrateWeeklyGoal ? 'is-celebrating' : ''}`}
-                                        style={dailyWeekProgressStyle}
-                                    >
-                                        {shouldCelebrateWeeklyGoal && (
-                                            <div className="daily-week-confetti" aria-hidden="true">
-                                                {Array.from({ length: 24 }, (_, index) => <span key={index}></span>)}
-                                            </div>
-                                        )}
-                                        <div className="daily-week-header">
-                                            <div className="daily-week-heading">
-                                                <div>
-                                                    <div className="daily-week-kicker">{ui.dailyWeek}</div>
-                                                    <div className="daily-week-goal-main">{`${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
+                                    <div className="p-5">
+                                        <div className="daily-goal-box">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="daily-task-icon w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+                                                    <Icon name="target" className="w-5 h-5" />
                                                 </div>
-                                            </div>
-                                            <div className="daily-week-goal-text">{`${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
-                                        </div>
-                                        <div className="daily-week-progress" aria-hidden="true">
-                                            <div style={{ width: activeDailyWeekAdvance ? 'var(--daily-week-to)' : `${dailyWeeklyProgress}%` }} />
-                                        </div>
-                                        <div className="daily-week-row">
-                                            {previewDailyWeekDays.map(day => (
-                                                <div key={day.day} className="daily-week-item">
-                                                    <div className={`daily-week-dot ${day.completed ? 'is-complete' : ''} ${day.isToday ? 'is-today' : ''}`}>
-                                                        {day.completed ? <Icon name="check" className="w-3.5 h-3.5" /> : ''}
+                                                <div className="min-w-0">
+                                                    <div className="text-[10px] font-black text-emerald-600 brand-text">{ui.dailyToday}</div>
+                                                    <div className="text-sm font-black text-slate-800 leading-tight">{getTaskTitle(dailySpec.task)}</div>
+                                                    <div className="text-[11px] font-extrabold text-slate-600 mt-1">{dailyTheme.goal || ui.dailyGoal}</div>
+                                                    <div className="daily-rule-row">
+                                                        <span><Icon name={dailySpec.completion === 'finish-grid' ? 'target' : 'timer'} className="w-3.5 h-3.5" />{dailyRuleLabel}</span>
+                                                        <span><Icon name="clock-3" className="w-3.5 h-3.5" />{dailyDurationLabel}</span>
                                                     </div>
-                                                    <div className="daily-week-label">{dailyWeekLabels[day.weekday]}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className={`daily-tomorrow-panel ${dailyRecord.completed ? 'is-unlocked' : ''}`}>
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="daily-tomorrow-icon">
-                                                <Icon name={dailyRecord.completed ? TASK_DATA[tomorrowSpec.task].icon : 'lock'} className="w-4 h-4" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="text-[10px] font-black brand-text text-slate-400">{ui.dailyTomorrowPreview}</div>
-                                                <div className="text-xs font-black text-slate-700 truncate">
-                                                    {dailyRecord.completed
-                                                        ? `${ui.dailyTomorrowPrefix}: ${tomorrowCategory}`
-                                                        : ui.dailyTomorrowLocked}
                                                 </div>
                                             </div>
+                                            <div className={`daily-status-pill ${dailyRecord.completed ? 'is-complete' : ''}`}>
+                                                {dailyRecord.completed ? ui.dailyDone : ui.dailyCheckIn}
+                                            </div>
                                         </div>
-                                        {dailyRecord.completed && (
-                                            <div className="daily-tomorrow-chip">{tomorrowTheme.title}</div>
-                                        )}
-                                    </div>
 
-                                    <button
-                                        className={`daily-start-button ${dailyRecord.completed ? 'is-secondary' : ''}`}
-                                        type="button"
-                                        onClick={() => startChallenge(dailySpec.task)}
-                                    >
-                                        <Icon name={dailyRecord.completed ? 'rotate-cw' : 'play'} className="w-4 h-4" />
-                                        {dailyRecord.completed ? ui.dailyReplay : ui.dailyStart}
-                                    </button>
+                                        <div
+                                            className={`daily-week-panel ${dailyWeeklyGoalComplete ? 'is-rewarded' : ''} ${activeDailyWeekAdvance ? 'is-advancing' : ''} ${shouldCelebrateWeeklyGoal ? 'is-celebrating' : ''}`}
+                                            style={dailyWeekProgressStyle}
+                                        >
+                                            {shouldCelebrateWeeklyGoal && (
+                                                <div className="daily-week-confetti" aria-hidden="true">
+                                                    {Array.from({ length: 24 }, (_, index) => <span key={index}></span>)}
+                                                </div>
+                                            )}
+                                            <div className="daily-week-header">
+                                                <div className="daily-week-heading">
+                                                    <div>
+                                                        <div className="daily-week-kicker">{ui.dailyWeek}</div>
+                                                        <div className="daily-week-goal-main">{`${ui.dailyWeeklyGoal} ${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="daily-week-goal-text">{`${dailyWeeklyGoalCount}/${WEEKLY_DAILY_GOAL}`}</div>
+                                            </div>
+                                            <div className="daily-week-progress" aria-hidden="true">
+                                                <div style={{ width: activeDailyWeekAdvance ? 'var(--daily-week-to)' : `${dailyWeeklyProgress}%` }} />
+                                            </div>
+                                            <div className="daily-week-row">
+                                                {previewDailyWeekDays.map(day => (
+                                                    <div key={day.day} className="daily-week-item">
+                                                        <div className={`daily-week-dot ${day.completed ? 'is-complete' : ''} ${day.isToday ? 'is-today' : ''}`}>
+                                                            {day.completed ? <Icon name="check" className="w-3.5 h-3.5" /> : ''}
+                                                        </div>
+                                                        <div className="daily-week-label">{dailyWeekLabels[day.weekday]}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className={`daily-tomorrow-panel ${dailyRecord.completed ? 'is-unlocked' : ''}`}>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="daily-tomorrow-icon">
+                                                    <Icon name={dailyRecord.completed ? TASK_DATA[tomorrowSpec.task].icon : 'lock'} className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="text-[10px] font-black brand-text text-slate-400">{ui.dailyTomorrowPreview}</div>
+                                                    <div className="text-xs font-black text-slate-700 truncate">
+                                                        {dailyRecord.completed
+                                                            ? `${ui.dailyTomorrowPrefix}: ${tomorrowCategory}`
+                                                            : ui.dailyTomorrowLocked}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {dailyRecord.completed && (
+                                                <div className="daily-tomorrow-chip">{tomorrowTheme.title}</div>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            className={`daily-start-button ${dailyRecord.completed ? 'is-secondary' : ''}`}
+                                            type="button"
+                                            onClick={() => startChallenge(dailySpec.task)}
+                                        >
+                                            <Icon name={dailyRecord.completed ? 'rotate-cw' : 'play'} className="w-4 h-4" />
+                                            {dailyRecord.completed ? ui.dailyReplay : ui.dailyStart}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         ) : mode === 'comp' ? (
                             <div
                                 onClick={() => startChallenge()}
@@ -2493,6 +3325,719 @@ function App() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {view === 'settings' && (
+                <div className="settings-screen app-content-screen h-full overflow-y-auto no-scrollbar bg-slate-50 px-5 py-5">
+                    <div className="settings-page-wrap">
+                        <div className="settings-page-hero my-page-hero">
+                            <div>
+                                <h2>{ui.settings}</h2>
+                                <p>{isEnglish ? 'Your milestones and preferences in one place.' : '\u67e5\u770b\u4f60\u7684\u6210\u5c31\u548c\u504f\u597d\u3002'}</p>
+                            </div>
+                        </div>
+
+                        <div className="my-page-section-label">{isEnglish ? 'THIS WEEK' : '\u672c\u5468\u72b6\u6001'}</div>
+
+                        <div className="my-progress-card">
+                            <div className="my-progress-card-head">
+                                <div>
+                                    <span>{isEnglish ? 'Your rhythm so far' : '\u4f60\u7684\u8bad\u7ec3\u8282\u594f'}</span>
+                                    <strong>{isEnglish ? `${trainingRecords.completedDays} training days` : `${trainingRecords.completedDays} \u5929\u8bad\u7ec3`}</strong>
+                                </div>
+                            </div>
+                            <div className="my-progress-stats">
+                                <div><strong>{trainingRecords.completedDays}</strong><span>{isEnglish ? 'Days' : '\u8bad\u7ec3\u5929\u6570'}</span></div>
+                                <div><strong>{trainingRecords.totalSessions}</strong><span>{isEnglish ? 'Sessions' : '\u5b8c\u6210\u6b21\u6570'}</span></div>
+                                <div><strong>{trainingRecords.bestScore || '-'}</strong><span>{isEnglish ? 'Best score' : '\u6700\u9ad8\u5206'}</span></div>
+                            </div>
+                            <button
+                                type="button"
+                                className="my-progress-link"
+                                onClick={() => {
+                                    playSound('tap');
+                                    setView('training-records');
+                                }}
+                            >
+                                <span>{settingsPageText.dailyTitle}</span>
+                                <Icon name="chevron-right" className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="my-sync-note">
+                            <div className="my-sync-note-icon"><Icon name="cloud" className="w-4 h-4" /></div>
+                            <div className="settings-page-card-copy">
+                                <div className="settings-page-card-title">{settingsPageText.accountTitle}</div>
+                                <div className="settings-page-card-body">{settingsPageText.accountBody}</div>
+                            </div>
+                            <div className="settings-page-pill">{settingsPageText.accountCta}</div>
+                        </div>
+
+                        <div className="my-page-section-label">{isEnglish ? 'YOUR LAB' : '你的实验室'}</div>
+
+                        <div className="settings-page-card settings-page-group settings-my-features my-feature-list">
+                            <div className="settings-page-group-row settings-page-row my-feature-row">
+                                <div className="settings-page-card-icon settings-leaderboard-icon">
+                                    <Icon name="trophy" className="w-5 h-5" />
+                                </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{isEnglish ? 'Leaderboard' : '排行榜'}</div>
+                                    <div className="settings-page-card-body">{isEnglish ? 'Compare your best runs with the wider lab.' : '和实验室里的其他玩家比较最佳成绩。'}</div>
+                                </div>
+                                <div className="settings-page-pill">{ui.settingsSoon}</div>
+                            </div>
+
+                            <div className="settings-page-group-divider" />
+
+                                <div className="settings-page-group-row settings-page-row my-feature-row">
+                                    <div className="settings-page-card-icon settings-achievements-icon">
+                                        <svg className="achievement-badge-svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                                            <path d="M10 22.5 8.2 29l7.8-4.1L23.8 29 22 22.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                                            <circle cx="16" cy="14" r="9" stroke="currentColor" strokeWidth="2" />
+                                            <path d="m16 9.6 1.35 2.74 3.03.44-2.19 2.14.52 3.02L16 16.52l-2.71 1.42.52-3.02-2.19-2.14 3.03-.44L16 9.6Z" fill="currentColor" />
+                                        </svg>
+                                    </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{isEnglish ? 'Badges & achievements' : '勋章与成就'}</div>
+                                    <div className="settings-page-card-body">{isEnglish ? 'Collect milestones as your training rhythm grows.' : '随着训练节奏成长，收集属于你的里程碑。'}</div>
+                                </div>
+                                <div className="settings-page-pill">{ui.settingsSoon}</div>
+                            </div>
+                        </div>
+
+                        <div className="my-page-section-label">{isEnglish ? 'PREFERENCES' : '偏好设置'}</div>
+
+                        <div className="settings-page-card settings-page-group settings-preferences-group">
+                            <div className="settings-page-group-row settings-page-group-language">
+                                <div className="settings-page-row-head">
+                                    <div>
+                                        <div className="settings-page-card-title">{ui.settingsLanguage}</div>
+                                        <div className="settings-page-card-body">{settingsPageText.languageHint}</div>
+                                    </div>
+                                </div>
+                                <div className="settings-language-group is-page">
+                                    {[
+                                        { key: 'zh', label: '中文' },
+                                        { key: 'en', label: 'EN' }
+                                    ].map(option => (
+                                        <button
+                                            key={option.key}
+                                            type="button"
+                                            onClick={() => setLanguage(option.key)}
+                                            className={`settings-language-option ${lang === option.key ? 'is-active' : ''}`}
+                                            aria-pressed={lang === option.key}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="settings-page-group-divider" />
+
+                            <div className="settings-page-group-row settings-page-row">
+                                <div className="settings-page-card-icon">
+                                    <Icon name={soundEnabled ? 'volume-2' : 'volume-x'} className="w-5 h-5" />
+                                </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{ui.settingsSound}</div>
+                                    <div className="settings-page-card-body">{settingsPageText.soundHint}</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={toggleSound}
+                                    className={`settings-sound-toggle is-page ${soundEnabled ? 'is-active' : ''}`}
+                                    aria-pressed={soundEnabled}
+                                >
+                                    {soundEnabled ? ui.settingsSoundOn : ui.settingsSoundOff}
+                                </button>
+                            </div>
+
+                            <div className="settings-page-group-row settings-page-row">
+                                <div className="settings-page-card-icon">
+                                    <Icon name="hard-drive" className="w-5 h-5" />
+                                </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{settingsPageText.dataTitle}</div>
+                                    <div className="settings-page-card-body">{settingsPageText.dataBody}</div>
+                                </div>
+                                <div className="settings-page-pill">{settingsPageText.localOnly}</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            )}
+
+            {view === 'training-records' && (
+                <div className="training-records-screen app-content-screen overflow-y-auto no-scrollbar bg-slate-50">
+                    <div className="training-records-wrap">
+                        <div className="training-records-topbar">
+                            <button
+                                type="button"
+                                className="settings-page-back"
+                                aria-label={settingsPageText.recordsBack}
+                                onClick={() => {
+                                    playSound('tap');
+                                    setView('settings');
+                                }}
+                            >
+                                <Icon name="chevron-left" className="w-4 h-4" />
+                            </button>
+                            <h1>{settingsPageText.dailyTitle}</h1>
+                            <span aria-hidden="true" />
+                        </div>
+
+                        {trainingRecordsUnlocked ? (
+                            <>
+                        <div className="training-records-growth-card">
+                            <div className="training-records-growth-mark">
+                                <Icon name="sparkles" className="w-4 h-4" />
+                            </div>
+                            <div className="training-records-growth-copy">
+                                <span>{isEnglish ? 'YOUR MOMENTUM' : '你的训练节奏'}</span>
+                                <strong>{trainingRecords.growthHeadline}</strong>
+                                <p>{trainingRecords.growthSummary}</p>
+                            </div>
+                            <div className="training-records-growth-streak">
+                                <strong>{trainingRecords.heatmapStreak}</strong>
+                                <span>{settingsPageText.recordsCurrentStreak}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="training-records-report-button"
+                            onClick={() => {
+                                playSound('tap');
+                                setWeeklyReportScope('current');
+                                setWeeklyReportReturnView('training-records');
+                                setView('weekly-report');
+                                recordRetention('click', {
+                                    clickRole: 'weekly_report',
+                                    clickLabel: 'Open Weekly Brain Report from Training Records'
+                                });
+                            }}
+                        >
+                            <div className="training-records-report-copy">
+                                <span>{isEnglish ? 'WEEKLY RECAP' : '本周回顾'}</span>
+                                <strong>{settingsPageText.reportCta}</strong>
+                            </div>
+                            <span className="training-records-report-action" aria-hidden="true">
+                                <Icon name="chevron-left" className="w-4 h-4 training-records-report-arrow" />
+                            </span>
+                        </button>
+
+                        <div className="training-records-heatmap-panel">
+                            <div className="training-records-panel-head">
+                                <div>
+                                    <div className="training-records-panel-kicker">{settingsPageText.recordsHeatmap}</div>
+                                    <strong>{trainingRecords.monthLabel}</strong>
+                                </div>
+                                <Icon name="calendar-days" className="w-4 h-4" />
+                            </div>
+                            <div className="training-records-heatmap-layout">
+                                <div className="training-records-heatmap" aria-label={settingsPageText.recordsHeatmap}>
+                                    <div className="training-records-heatmap-body">
+                                        <div className="training-records-heatmap-weekdays" aria-hidden="true">
+                                            {(isEnglish ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['一', '二', '三', '四', '五', '六', '日']).map((label, index) => (
+                                                <span key={`${label}-${index}`}>{label}</span>
+                                            ))}
+                                        </div>
+                                        <div className="training-records-heatmap-cells">
+                                            {trainingRecords.heatmap.map((cell, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={cell.day || `empty-${index}`}
+                                                    className={`training-records-heatmap-cell ${cell.empty ? 'is-empty' : `level-${cell.level}`}`}
+                                                    disabled={cell.empty || cell.count === null}
+                                                    onClick={() => {
+                                                        if (cell.empty || cell.count === null) return;
+                                                        playSound('tap');
+                                                        setSelectedTrainingDay(cell.day);
+                                                    }}
+                                                    title={cell.count === null || !cell.day ? '' : `${cell.day}: ${cell.count} ${isEnglish ? 'sessions' : '局'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="training-records-heatmap-legend">
+                                        <span>{settingsPageText.recordsLess}</span>
+                                        <i className="level-0" />
+                                        <i className="level-1" />
+                                        <i className="level-2" />
+                                        <i className="level-3" />
+                                        <i className="level-4" />
+                                        <span>{settingsPageText.recordsMore}</span>
+                                    </div>
+                                </div>
+                                <div className="training-records-heatmap-summary">
+                                    <span>{isEnglish ? 'Past month' : '过去一个月'}</span>
+                                    <div>
+                                        <strong>{trainingRecords.heatmapCompletedDays}</strong>
+                                        <small>{settingsPageText.recordsTrainingDays}</small>
+                                    </div>
+                                    <div>
+                                        <strong>{trainingRecords.heatmapSessions}</strong>
+                                        <small>{settingsPageText.recordsSessions}</small>
+                                    </div>
+                                    <div>
+                                        <strong>{trainingRecords.heatmapStreak}</strong>
+                                        <small>{settingsPageText.recordsCurrentStreak}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {selectedTrainingDay && (
+                                <div className="training-records-day-detail">
+                                    <div>
+                                        <span>{settingsPageText.recordsSelectedDay}</span>
+                                        <strong>{selectedTrainingDay}</strong>
+                                    </div>
+                                    {selectedTrainingDayDetail ? (
+                                        <div className="training-records-day-detail-stats">
+                                            <div><strong>{selectedTrainingDayDetail.sessions}</strong><span>{settingsPageText.recordsSessionCount}</span></div>
+                                            <div><strong>{selectedTrainingDayDetail.accuracy === null ? '-' : `${selectedTrainingDayDetail.accuracy}%`}</strong><span>{settingsPageText.recordsAccuracy}</span></div>
+                                            <div><strong>{selectedTrainingDayTask || '-'}</strong><span>{settingsPageText.recordsTaskLabel}</span></div>
+                                        </div>
+                                    ) : (
+                                        <p>{settingsPageText.recordsNoSessions}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="training-records-section-head">
+                            <div>
+                                <strong>{settingsPageText.recordsTrend}</strong>
+                                <span>{settingsPageText.recordsTrendHint}</span>
+                            </div>
+                        </div>
+
+                        <div className="training-records-range-tabs" role="tablist" aria-label={settingsPageText.recordsTrend}>
+                            {[
+                                { key: 'day', label: settingsPageText.recordsDay },
+                                { key: 'week', label: settingsPageText.recordsWeek },
+                                { key: 'month', label: settingsPageText.recordsMonth }
+                            ].map(option => (
+                                <button
+                                    key={option.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={recordsRange === option.key}
+                                    className={recordsRange === option.key ? 'is-active' : ''}
+                                    onClick={() => {
+                                        playSound('tap');
+                                        setRecordsRange(option.key);
+                                    }}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="training-records-metrics">
+                            <div className="training-records-metric">
+                                <span>{settingsPageText.recordsMinutes}</span>
+                                <strong>{trainingRecords.totalMinutes}</strong>
+                            </div>
+                            <div className="training-records-metric">
+                                <span>{settingsPageText.recordsAccuracy}</span>
+                                <strong>{trainingRecords.accuracy}%</strong>
+                            </div>
+                            <div className="training-records-metric">
+                                <span>{settingsPageText.recordsBestScore}</span>
+                                <strong>{trainingRecords.bestScore || '-'}</strong>
+                            </div>
+                        </div>
+
+                        {!trainingRecords.hasData ? (
+                            <div className="training-records-empty">
+                                <Icon name="brain-circuit" className="w-6 h-6" />
+                                <p>{settingsPageText.recordsNoData}</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="training-records-panel">
+                                    <div className="training-records-panel-head">
+                                        <div>
+                                            <div className="training-records-panel-kicker">{settingsPageText.recordsEffect}</div>
+                                            <strong>{trainingRecords.accuracy}% {settingsPageText.recordsAccuracy}</strong>
+                                        </div>
+                                        <Icon name="activity" className="w-4 h-4" />
+                                    </div>
+                                    <div className="training-records-bars">
+                                        {trainingRecords.performanceBars.map(bar => (
+                                            <div className={`training-records-bar-column ${bar.hasData ? '' : 'is-empty'}`} key={bar.key}>
+                                                <div className="training-records-bar-track">
+                                                    <div className="training-records-bar-fill" style={{ height: `${Math.max(8, bar.percent)}%` }} />
+                                                </div>
+                                                <span>{bar.label}</span>
+                                                <small>{bar.hasData ? `${bar.accuracy}%` : '-'}</small>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="training-records-effect-copy">{trainingRecords.effectSummary}</p>
+                                </div>
+
+                                <div className="training-records-panel">
+                                    <div className="training-records-panel-head">
+                                        <div>
+                                            <div className="training-records-panel-kicker">{settingsPageText.recordsTaskMix}</div>
+                                            <p className="training-records-preference-copy">{trainingRecords.preferenceSummary}</p>
+                                        </div>
+                                        <Icon name="layers-3" className="w-4 h-4" />
+                                    </div>
+                                    <div className="training-records-task-list">
+                                        {trainingRecords.taskMix.length ? trainingRecords.taskMix.map(item => (
+                                            <div className="training-records-task-row" key={item.task}>
+                                                <div className="training-records-task-name">{item.name}</div>
+                                                <div className="training-records-task-track"><i style={{ width: `${Math.round((item.count / trainingRecordsMaxTask) * 100)}%` }} /></div>
+                                                <strong>{item.count}</strong>
+                                            </div>
+                                        )) : <p className="training-records-muted">-</p>}
+                                    </div>
+                                </div>
+
+                                <div className="training-records-panel training-records-performance-panel">
+                                    <div className="training-records-panel-head">
+                                        <div>
+                                            <div className="training-records-panel-kicker">{settingsPageText.recordsPerformance}</div>
+                                            <strong>{isEnglish ? 'Different games, different strengths.' : '每个玩法，都有自己的进步方式。'}</strong>
+                                        </div>
+                                        <Icon name="trophy" className="w-4 h-4" />
+                                    </div>
+                                    {trainingRecords.taskPerformance.length ? (
+                                        <div className="training-records-performance-list">
+                                            {trainingRecords.taskPerformance.map(item => (
+                                                <div className="training-records-performance-row" key={item.task}>
+                                                    <div>
+                                                        <strong>{item.name}</strong>
+                                                        <span>{item.count} {isEnglish ? 'sessions' : '局'}</span>
+                                                    </div>
+                                                    <strong>
+                                                        {item.metric.type === 'time'
+                                                            ? formatWeeklySeconds(item.metric.value, isEnglish)
+                                                            : item.metric.type === 'accuracy'
+                                                                ? `${item.metric.value}%`
+                                                                : item.metric.type === 'score'
+                                                                    ? `${item.metric.value}${isEnglish ? ' pts' : ' 分'}`
+                                                                    : `${item.metric.value} ${isEnglish ? 'sessions' : '局'}`}
+                                                    </strong>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="training-records-performance-empty">{settingsPageText.recordsNoTaskData}</p>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        <div className="training-records-next-step daily-bridge-link">
+                            <div>
+                                <span>{isEnglish ? 'NEXT SMALL STEP' : '下一步'}</span>
+                                <strong>{settingsPageText.recordsDailyBridge} · {getTaskTitle(dailySpec.task)}</strong>
+                                <p>{dailyRecord.completed ? settingsPageText.recordsDailyDone : settingsPageText.recordsTodayHint}</p>
+                            </div>
+                            <button
+                                type="button"
+                                aria-label={dailyRecord.completed ? settingsPageText.recordsDailyAgain : settingsPageText.recordsDailyOpen}
+                                onClick={() => {
+                                    playSound('tap');
+                                    setMode('daily');
+                                    setView('home');
+                                }}
+                            >
+                                <Icon name="chevron-left" className="w-5 h-5 training-records-next-step-arrow" />
+                            </button>
+                        </div>
+                            </>
+                        ) : (
+                            <div className="training-records-locked-state">
+                                <div className="training-records-locked-icon">
+                                    <Icon name="lock-keyhole" className="w-6 h-6" />
+                                </div>
+                                <span className="training-records-locked-kicker">{isEnglish ? 'TRAINING RECORDS' : '训练记录'}</span>
+                                <h2>{isEnglish ? 'Your record is still taking shape' : '你的训练记录还在积累中'}</h2>
+                                <p>
+                                    {isEnglish
+                                        ? 'Complete one full week of training to unlock your personal rhythm and progress.'
+                                        : '完成一周训练后，就可以查看你的训练节奏和成长变化。'}
+                                </p>
+                                <div className="training-records-locked-progress">
+                                    <div className="training-records-locked-progress-head">
+                                        <span>{isEnglish ? 'WEEKLY FOUNDATION' : '一周基础记录'}</span>
+                                        <strong>{Math.min(7, trainingRecords.lifetimeTrainingDays)} / 7</strong>
+                                    </div>
+                                    <div className="training-records-locked-progress-track">
+                                        <span style={{ width: `${Math.min(100, (trainingRecords.lifetimeTrainingDays / 7) * 100)}%` }} />
+                                    </div>
+                                    <small>{isEnglish ? `${Math.max(0, 7 - trainingRecords.lifetimeTrainingDays)} more training days to go` : `还需要 ${Math.max(0, 7 - trainingRecords.lifetimeTrainingDays)} 天训练`}</small>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="training-records-locked-cta"
+                                    onClick={() => {
+                                        playSound('tap');
+                                        setMode('daily');
+                                        setView('home');
+                                    }}
+                                >
+                                    <Icon name="calendar-check" className="w-4 h-4" />
+                                    {isEnglish ? "Start today's training" : '开始今日训练'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {view === 'settings-daily' && (
+                <div className="settings-screen settings-subpage app-content-screen h-full overflow-y-auto no-scrollbar bg-slate-50 px-5 py-5">
+                    <div className="settings-page-wrap">
+                        <button
+                            type="button"
+                            className="settings-page-back"
+                            onClick={() => {
+                                playSound('tap');
+                                setView('settings');
+                            }}
+                        >
+                            <Icon name="chevron-left" className="w-4 h-4" />
+                            <span>{settingsPageText.backToSettings}</span>
+                        </button>
+
+                        <div className="settings-page-hero settings-subpage-hero">
+                            <div className="settings-page-icon settings-daily-page-icon">
+                                <Icon name="calendar-check" className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <div className="settings-page-kicker">Prefrontal Lab</div>
+                                <h2>{settingsPageText.dailyTitle}</h2>
+                                <p>{settingsPageText.dailyPageSubtitle}</p>
+                            </div>
+                        </div>
+
+                        <div className="settings-page-card settings-page-stack">
+                            <div className="settings-page-row">
+                                <div className="settings-page-card-icon settings-daily-card-icon">
+                                    <Icon name="calendar-check" className="w-5 h-5" />
+                                </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{settingsPageText.dailyTitle}</div>
+                                    <div className="settings-page-card-body">{settingsPageText.dailyBody}</div>
+                                </div>
+                            </div>
+                            <div className="settings-action-row">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        playSound('tap');
+                                        setMode('daily');
+                                        setView('home');
+                                    }}
+                                >
+                                    <span className="settings-action-link-copy">
+                                        <Icon name="calendar-check" className="w-4 h-4" />
+                                        <span>{settingsPageText.dailyCta}</span>
+                                    </span>
+                                    <Icon name="chevron-right" className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        playSound('tap');
+                                        setWeeklyReportReturnView('settings-daily');
+                                        setView('weekly-report');
+                                        recordRetention('click', {
+                                            clickRole: 'weekly_report',
+                                            clickLabel: 'Weekly Brain Report Settings'
+                                        });
+                                    }}
+                                >
+                                    <span className="settings-action-link-copy">
+                                        <Icon name="chart-no-axes-combined" className="w-4 h-4" />
+                                        <span>{settingsPageText.reportCta}</span>
+                                    </span>
+                                    <Icon name="chevron-right" className="w-4 h-4" />
+                                </button>
+                            </div>
+                            {!weeklyReceiptOpen && (
+                                <button
+                                    type="button"
+                                    className="weekly-receipt-cover"
+                                    onClick={() => {
+                                        playSound('complete');
+                                        setWeeklyReportReturnView('settings-daily');
+                                        setView('weekly-report');
+                                        recordRetention('click', {
+                                            clickRole: 'weekly_receipt_open',
+                                            clickLabel: 'Open Weekly Brain Receipt'
+                                        });
+                                    }}
+                                >
+                                    <div className="weekly-receipt-cover-top">
+                                        <div>
+                                            <div className="weekly-receipt-kicker">{weeklyReportText.receiptKicker}</div>
+                                            <div className="weekly-receipt-title">{weeklyReportText.receiptTitle}</div>
+                                            <div className="weekly-receipt-subtitle">{weeklyReportText.receiptSubtitle}</div>
+                                        </div>
+                                        <div className="weekly-receipt-seal" aria-hidden="true">
+                                            <Icon name="sparkles" className="w-5 h-5" />
+                                        </div>
+                                    </div>
+                                    <div className="weekly-receipt-cover-body">
+                                        <div className="weekly-receipt-preview-line">
+                                            <span>{isEnglish ? 'This week' : '本周完成'}</span>
+                                            <strong>{weeklyReport.completedDays}/{WEEKLY_DAILY_GOAL} {isEnglish ? 'days' : '天'}</strong>
+                                        </div>
+                                        <div className="weekly-receipt-open-cta">
+                                            <Icon name="gift" className="w-4 h-4" />
+                                            <span>{weeklyReportText.receiptOpen}</span>
+                                            <Icon name="chevron-right" className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+                            {weeklyReceiptOpen && (
+                                <div className="weekly-report-detail is-settings">
+                                    <div className="weekly-report-persona">
+                                        <div className="weekly-report-persona-icon">
+                                            <Icon name="brain-circuit" className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <div className="weekly-report-persona-label">{weeklyReportText.eyebrow}</div>
+                                            <div className="weekly-report-persona-title">{weeklyReport.persona}</div>
+                                        </div>
+                                    </div>
+                                    <p className="weekly-report-story">{weeklyReport.summary}</p>
+                                    <div className="weekly-report-grid">
+                                        <div className="weekly-report-metric">
+                                            <span>{weeklyReportText.best}</span>
+                                            <strong>{weeklyReport.bestScore || '-'}</strong>
+                                        </div>
+                                        <div className="weekly-report-metric">
+                                            <span>{weeklyReportText.focus}</span>
+                                            <strong>{weeklyReport.topTaskName}</strong>
+                                        </div>
+                                        <div className="weekly-report-metric">
+                                            <span>{weeklyReportText.time}</span>
+                                            <strong>{formatWeeklySeconds(weeklyReport.fastestSchulte || weeklyReport.avgSchulte, isEnglish)}</strong>
+                                        </div>
+                                        <div className="weekly-report-metric">
+                                            <span>{weeklyReportText.accuracy}</span>
+                                            <strong>{weeklyReport.totalCorrect || 0}/{weeklyReport.totalIncorrect || 0}</strong>
+                                        </div>
+                                    </div>
+                                    <div className="weekly-report-highlight">
+                                        <Icon name="sparkles" className="w-4 h-4" />
+                                        <span>{weeklyReport.highlight}</span>
+                                    </div>
+                                    <div className="weekly-report-next">
+                                        <span>{weeklyReportText.note}</span>
+                                        <strong>{weeklyReport.suggestion}</strong>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="weekly-receipt-close"
+                                        onClick={() => setWeeklyReceiptOpen(false)}
+                                    >
+                                        {weeklyReportText.receiptClose}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {view === 'weekly-report' && (
+                <div className="weekly-report-screen app-content-screen overflow-y-auto no-scrollbar">
+                    <div className="weekly-report-screen-inner">
+                        <button
+                            type="button"
+                            className="weekly-report-back"
+                            onClick={() => {
+                                playSound('tap');
+                                setView(weeklyReportReturnView);
+                            }}
+                            aria-label={weeklyReportReturnView === 'training-records' ? settingsPageText.recordsBack : settingsPageText.backToSettings}
+                        >
+                            <Icon name="chevron-left" className="w-5 h-5" />
+                        </button>
+
+                        <div className="weekly-report-screen-heading">
+                            <div className="weekly-report-screen-kicker">{weeklyReportPageKicker}</div>
+                            <h1>{weeklyReportPageTitle}</h1>
+                            <p>{weeklyReportText.reportPageIntro}</p>
+                        </div>
+
+                        <div className="weekly-report-reveal-list">
+                            <div className={`weekly-report-reveal-row ${weeklyReportStep >= 1 ? 'is-visible' : ''}`}>
+                                <div className="weekly-report-reveal-index">01</div>
+                                <div className="weekly-report-reveal-copy">
+                                    <div className="weekly-report-reveal-label">{weeklyReportDaysLabel}</div>
+                                    <div className="weekly-report-count-line">
+                                        <strong>{weeklyReportCount}</strong>
+                                        <span>{isEnglish ? 'days' : '天'}</span>
+                                    </div>
+                                    <p>{weeklyReportText.reportDaysCopy}</p>
+                                </div>
+                            </div>
+
+                            <div className={`weekly-report-reveal-row ${weeklyReportStep >= 2 ? 'is-visible' : ''}`}>
+                                <div className="weekly-report-reveal-index">02</div>
+                                <div className="weekly-report-reveal-copy">
+                                    <div className="weekly-report-reveal-label">{weeklyReportText.reportTaskLabel}</div>
+                                    <div className="weekly-report-reveal-value">{weeklyReport.topTaskName}</div>
+                                    <p>{weeklyReportText.reportTaskCopy}</p>
+                                </div>
+                            </div>
+
+                            <div className={`weekly-report-reveal-row ${weeklyReportStep >= 3 ? 'is-visible' : ''}`}>
+                                <div className="weekly-report-reveal-index">03</div>
+                                <div className="weekly-report-reveal-copy">
+                                    <div className="weekly-report-reveal-label">{weeklyReportText.reportBestLabel}</div>
+                                    <div className="weekly-report-score-line">
+                                        <strong>{weeklyReportScore}</strong>
+                                        <span>{isEnglish ? 'points' : '分'}</span>
+                                    </div>
+                                    <p>{weeklyReportText.reportBestCopy}</p>
+                                </div>
+                            </div>
+
+                            <div className={`weekly-report-reveal-row ${weeklyReportStep >= 4 ? 'is-visible' : ''} is-comparison`}>
+                                <div className="weekly-report-reveal-index">04</div>
+                                <div className="weekly-report-reveal-copy">
+                                    <div className="weekly-report-reveal-label">{weeklyReportText.reportCompareLabel}</div>
+                                    <div className="weekly-report-compare-value">{weeklyReport.comparison}</div>
+                                    <div className="weekly-report-compare-strip">
+                                        <span>{weeklyReportPreviousBarLabel} {weeklyReport.previousFastestSchulte ? formatWeeklySeconds(weeklyReport.previousFastestSchulte, isEnglish) : (weeklyReport.previousBestScore || '-')}</span>
+                                        <Icon name="arrow-right" className="w-4 h-4" />
+                                        <span>{weeklyReportCurrentBarLabel} {weeklyReport.fastestSchulte ? formatWeeklySeconds(weeklyReport.fastestSchulte, isEnglish) : (weeklyReport.bestScore || '-')}</span>
+                                    </div>
+                                    <p>{weeklyReportText.reportCompareCopy}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`weekly-report-final ${weeklyReportStep >= 5 ? 'is-visible' : ''}`}>
+                            <h2>{weeklyReportText.reportReady}</h2>
+                            <p>{weeklyReportText.reportReadyCopy}</p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    playSound('daily');
+                                    setMode('daily');
+                                    setView('home');
+                                }}
+                            >
+                                <Icon name="calendar-check" className="w-4 h-4" />
+                                {dailyRecord.completed ? weeklyReportText.reportViewDaily : weeklyReportText.reportEnter}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -2665,7 +4210,7 @@ function App() {
             )}
 
             {/* 更新说明弹窗 */}
-            {showUpdateNote && view !== 'analytics' && (
+            {showUpdateNote && !urlParams.has('suppressUpdate') && view !== 'analytics' && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/60 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-sm max-h-[calc(100dvh-3rem)] rounded-[2.5rem] p-8 shadow-2xl animate-pop-center relative overflow-y-auto overscroll-contain">
                         {/* 背景装饰图层 */}
@@ -3125,6 +4670,12 @@ function App() {
                                     <span>{ui.dailyTomorrowPreview}</span>
                                     <strong>{tomorrowCategory}</strong>
                                 </div>
+                            </div>
+                        )}
+                        {isDailyResult && (
+                            <div className="daily-result-note">
+                                <Icon name="sparkles" className="w-4 h-4" />
+                                <span>{ui.dailyResultNote}</span>
                             </div>
                         )}
                         {!isDailyResult && <div className="mb-8" />}
