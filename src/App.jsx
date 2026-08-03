@@ -1309,7 +1309,7 @@ function App() {
     const [view, setView] = useState(() => {
         if (urlParams.has('analytics') && urlParams.get('owner') === '1') return 'analytics';
         if (urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo')) return 'training-records';
-        if (urlParams.has('weeklyReportDemo')) return 'weekly-report';
+        if (urlParams.has('weeklyReportDemo') || urlParams.has('weeklyReportGatePreview')) return 'weekly-report';
         if (urlParams.has('my-page-preview') || urlParams.has('myPagePreview')) return 'settings';
         return 'home';
     });
@@ -2027,6 +2027,14 @@ function App() {
         isEnglish,
         preview: isWeeklyReportPreview
     });
+    const weeklyReportGatePreview = urlParams.has('weeklyReportGatePreview');
+    const weeklyReportBasicUnlockDays = 3;
+    const weeklyReportFullUnlockDays = 7;
+    const weeklyReportHasBasicAccess = weeklyReport.completedDays >= weeklyReportBasicUnlockDays;
+    const weeklyReportUnlocked = !weeklyReportGatePreview && weeklyReportHasBasicAccess;
+    const weeklyReportLockIsFullStage = weeklyReportHasBasicAccess;
+    const weeklyReportLockTarget = weeklyReportLockIsFullStage ? weeklyReportFullUnlockDays : weeklyReportBasicUnlockDays;
+    const weeklyReportLockProgress = Math.min(weeklyReport.completedDays, weeklyReportLockTarget);
     const mondayWeeklyReport = buildWeeklyBrainReport({
         retentionData,
         dailyProgress,
@@ -2062,7 +2070,10 @@ function App() {
             receiptKicker: 'WEEKLY RECAP',
             receiptTitle: 'Your brain receipt',
             receiptSubtitle: 'A small record of the work you put in this week.',
-            receiptOpen: 'Open this week',
+             receiptOpen: 'Open this week',
+             receiptLockedTitle: 'Your report is taking shape',
+             receiptLockedSubtitle: 'Keep a few more sessions going to unlock the full picture.',
+             receiptLockedOpen: 'See unlock progress',
             receiptClose: 'Close receipt',
             reportPageKicker: 'WEEKLY RECAP',
             reportPageTitle: 'Your week in focus',
@@ -2078,7 +2089,17 @@ function App() {
             reportLastWeek: 'Last week',
             reportThisWeek: 'This week',
             reportReady: 'Ready for next week?',
-            reportReadyCopy: 'Keep the rhythm going. One small session is enough to return.',
+             reportReadyCopy: 'Keep the rhythm going. One small session is enough to return.',
+             lockKicker: 'REPORT UNLOCK',
+             lockTitleBasic: 'A few more sessions, then your report begins',
+             lockTitleFull: 'One more training day for the full report',
+             lockBodyBasic: 'Your training record is already being saved. Complete 3 training days to unlock your first weekly summary.',
+             lockBodyFull: 'Your starter summary is ready. Complete 7 training days to unlock the full weekly trend and comparison view.',
+             lockProgressLabelBasic: 'STARTER REPORT',
+             lockProgressLabelFull: 'FULL WEEKLY REPORT',
+             lockDaysLeftBasic: 'more training days to unlock your first summary',
+             lockDaysLeftFull: 'more training day to unlock the full report',
+             lockCta: "Start today's training",
             reportEnter: "Start Today's Challenge",
             reportViewDaily: "View Today's Challenge",
             days: 'days',
@@ -2097,7 +2118,10 @@ function App() {
             receiptKicker: '本周记录',
             receiptTitle: '本周脑力收据',
             receiptSubtitle: '把这一周的每一次训练，收进一张小小的成长记录里。',
-            receiptOpen: '打开本周记录',
+             receiptOpen: '打开本周记录',
+             receiptLockedTitle: '本周周报还在积累中',
+             receiptLockedSubtitle: '继续完成几次训练，解锁更完整的成长记录。',
+             receiptLockedOpen: '查看解锁进度',
             receiptClose: '收起本周记录',
             reportPageKicker: '本周记录',
             reportPageTitle: '这一周，你的专注轨迹',
@@ -2113,7 +2137,17 @@ function App() {
             reportLastWeek: '上周',
             reportThisWeek: '本周',
             reportReady: '准备好进入下一周了吗？',
-            reportReadyCopy: '保持现在的节奏，下一次回来就算继续前进。',
+             reportReadyCopy: '保持现在的节奏，下一次回来就算继续前进。',
+             lockKicker: '周报解锁进度',
+             lockTitleBasic: '再完成几次训练，周报就开始生成',
+             lockTitleFull: '再训练 1 天，解锁完整周报',
+             lockBodyBasic: '你的训练记录会先被保留下来。完成 3 天训练后，就能看到第一份基础周报。',
+             lockBodyFull: '基础摘要已经在积累中。完成 7 天训练后，就能看到完整的趋势和对比分析。',
+             lockProgressLabelBasic: '基础周报',
+             lockProgressLabelFull: '完整周报',
+             lockDaysLeftBasic: '天训练后解锁第一份周报',
+             lockDaysLeftFull: '天训练后解锁完整周报',
+             lockCta: '开始今日训练',
             reportEnter: '开始今日挑战',
             reportViewDaily: '查看今日挑战',
             days: '天',
@@ -2255,7 +2289,7 @@ function App() {
         };
 
     useEffect(() => {
-        if (view !== 'weekly-report') {
+        if (view !== 'weekly-report' || !weeklyReportUnlocked) {
             setWeeklyReportStep(0);
             setWeeklyReportCount(0);
             setWeeklyReportScore(0);
@@ -2315,7 +2349,7 @@ function App() {
             clearTimeout(scoreStartTimer);
             if (scoreTimer) clearInterval(scoreTimer);
         };
-    }, [view, weeklyReport.completedDays, weeklyReportScoreTarget]);
+    }, [view, weeklyReport.completedDays, weeklyReportScoreTarget, weeklyReportUnlocked]);
 
     useEffect(() => {
         if (view !== 'home' || showUpdateNote || (!isMonday && !isWeeklyReportPromptPreview)) return;
@@ -3956,7 +3990,7 @@ function App() {
                                 >
                                     <span className="settings-action-link-copy">
                                         <Icon name="chart-no-axes-combined" className="w-4 h-4" />
-                                        <span>{settingsPageText.reportCta}</span>
+                                        <span>{weeklyReportUnlocked ? settingsPageText.reportCta : weeklyReportText.receiptLockedOpen}</span>
                                     </span>
                                     <Icon name="chevron-right" className="w-4 h-4" />
                                 </button>
@@ -3964,7 +3998,7 @@ function App() {
                             {!weeklyReceiptOpen && (
                                 <button
                                     type="button"
-                                    className="weekly-receipt-cover"
+                                    className={`weekly-receipt-cover ${weeklyReportUnlocked ? '' : 'is-locked'}`}
                                     onClick={() => {
                                         playSound('complete');
                                         setWeeklyReportReturnView('settings-daily');
@@ -3978,11 +4012,11 @@ function App() {
                                     <div className="weekly-receipt-cover-top">
                                         <div>
                                             <div className="weekly-receipt-kicker">{weeklyReportText.receiptKicker}</div>
-                                            <div className="weekly-receipt-title">{weeklyReportText.receiptTitle}</div>
-                                            <div className="weekly-receipt-subtitle">{weeklyReportText.receiptSubtitle}</div>
+                                            <div className="weekly-receipt-title">{weeklyReportUnlocked ? weeklyReportText.receiptTitle : weeklyReportText.receiptLockedTitle}</div>
+                                            <div className="weekly-receipt-subtitle">{weeklyReportUnlocked ? weeklyReportText.receiptSubtitle : weeklyReportText.receiptLockedSubtitle}</div>
                                         </div>
                                         <div className="weekly-receipt-seal" aria-hidden="true">
-                                            <Icon name="sparkles" className="w-5 h-5" />
+                                            <Icon name={weeklyReportUnlocked ? 'sparkles' : 'lock-keyhole'} className="w-5 h-5" />
                                         </div>
                                     </div>
                                     <div className="weekly-receipt-cover-body">
@@ -3991,8 +4025,8 @@ function App() {
                                             <strong>{weeklyReport.completedDays}/{weeklyReportGoal} {isEnglish ? 'days' : '天'}</strong>
                                         </div>
                                         <div className="weekly-receipt-open-cta">
-                                            <Icon name="gift" className="w-4 h-4" />
-                                            <span>{weeklyReportText.receiptOpen}</span>
+                                            <Icon name={weeklyReportUnlocked ? 'gift' : 'lock-keyhole'} className="w-4 h-4" />
+                                            <span>{weeklyReportUnlocked ? weeklyReportText.receiptOpen : weeklyReportText.receiptLockedOpen}</span>
                                             <Icon name="chevron-right" className="w-4 h-4" />
                                         </div>
                                     </div>
@@ -4065,13 +4099,50 @@ function App() {
                             <Icon name="chevron-left" className="w-5 h-5" />
                         </button>
 
-                        <div className="weekly-report-screen-heading">
-                            <div className="weekly-report-screen-kicker">{weeklyReportPageKicker}</div>
-                            <h1>{weeklyReportPageTitle}</h1>
-                            <p>{weeklyReportText.reportPageIntro}</p>
-                        </div>
+                        {!weeklyReportUnlocked ? (
+                            <div className="training-records-locked-state weekly-report-locked-state">
+                                <div className="training-records-locked-icon">
+                                    <Icon name="lock-keyhole" className="w-6 h-6" />
+                                </div>
+                                <span className="training-records-locked-kicker">{weeklyReportText.lockKicker}</span>
+                                <h2>{weeklyReportLockIsFullStage ? weeklyReportText.lockTitleFull : weeklyReportText.lockTitleBasic}</h2>
+                                <p>{weeklyReportLockIsFullStage ? weeklyReportText.lockBodyFull : weeklyReportText.lockBodyBasic}</p>
+                                <div className="training-records-locked-progress">
+                                    <div className="training-records-locked-progress-head">
+                                        <span>{weeklyReportLockIsFullStage ? weeklyReportText.lockProgressLabelFull : weeklyReportText.lockProgressLabelBasic}</span>
+                                        <strong>{weeklyReportLockProgress} / {weeklyReportLockTarget}</strong>
+                                    </div>
+                                    <div className="training-records-locked-progress-track">
+                                        <span style={{ width: `${Math.min(100, (weeklyReportLockProgress / weeklyReportLockTarget) * 100)}%` }} />
+                                    </div>
+                                    <small>
+                                        {weeklyReportLockIsFullStage
+                                            ? `${Math.max(0, weeklyReportLockTarget - weeklyReportLockProgress)} ${weeklyReportText.lockDaysLeftFull}`
+                                            : `${Math.max(0, weeklyReportLockTarget - weeklyReportLockProgress)} ${weeklyReportText.lockDaysLeftBasic}`}
+                                    </small>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="training-records-locked-cta"
+                                    onClick={() => {
+                                        playSound('daily');
+                                        setMode('daily');
+                                        setView('home');
+                                    }}
+                                >
+                                    <Icon name="calendar-check" className="w-4 h-4" />
+                                    {weeklyReportText.lockCta}
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                            <div className="weekly-report-screen-heading">
+                                <div className="weekly-report-screen-kicker">{weeklyReportPageKicker}</div>
+                                <h1>{weeklyReportPageTitle}</h1>
+                                <p>{weeklyReportText.reportPageIntro}</p>
+                            </div>
 
-                        <div className="weekly-report-reveal-list">
+                            <div className="weekly-report-reveal-list">
                             <div className={`weekly-report-reveal-row ${weeklyReportStep >= 1 ? 'is-visible' : ''}`}>
                                 <div className="weekly-report-reveal-index">01</div>
                                 <div className="weekly-report-reveal-copy">
@@ -4118,23 +4189,25 @@ function App() {
                                     <p>{weeklyReportText.reportCompareCopy}</p>
                                 </div>
                             </div>
-                        </div>
+                            </div>
 
-                        <div className={`weekly-report-final ${weeklyReportStep >= 5 ? 'is-visible' : ''}`}>
-                            <h2>{weeklyReportText.reportReady}</h2>
-                            <p>{weeklyReportText.reportReadyCopy}</p>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    playSound('daily');
-                                    setMode('daily');
-                                    setView('home');
-                                }}
-                            >
-                                <Icon name="calendar-check" className="w-4 h-4" />
-                                {dailyRecord.completed ? weeklyReportText.reportViewDaily : weeklyReportText.reportEnter}
-                            </button>
-                        </div>
+                            <div className={`weekly-report-final ${weeklyReportStep >= 5 ? 'is-visible' : ''}`}>
+                                <h2>{weeklyReportText.reportReady}</h2>
+                                <p>{weeklyReportText.reportReadyCopy}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        playSound('daily');
+                                        setMode('daily');
+                                        setView('home');
+                                    }}
+                                >
+                                    <Icon name="calendar-check" className="w-4 h-4" />
+                                    {dailyRecord.completed ? weeklyReportText.reportViewDaily : weeklyReportText.reportEnter}
+                                </button>
+                            </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

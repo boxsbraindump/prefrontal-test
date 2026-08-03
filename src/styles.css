@@ -579,6 +579,39 @@ body.is-app-scrollable .app-shell {
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.16);
 }
 
+.weekly-report-locked-state {
+    min-height: 520px;
+    border-color: #d1fae5;
+    box-shadow: 0 16px 34px rgba(16, 185, 129, 0.08);
+}
+
+.weekly-report-locked-state .training-records-locked-icon {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.weekly-report-locked-state .training-records-locked-kicker {
+    color: #10b981;
+}
+
+.weekly-report-locked-state .training-records-locked-progress {
+    border-color: #a7f3d0;
+}
+
+.weekly-report-locked-state .training-records-locked-progress-head span,
+.weekly-report-locked-state .training-records-locked-progress-head strong {
+    color: #059669;
+}
+
+.weekly-report-locked-state .training-records-locked-progress-track span {
+    background: #10b981;
+}
+
+.weekly-report-locked-state .training-records-locked-cta {
+    background: #10b981;
+    box-shadow: 0 10px 20px rgba(16, 185, 129, 0.16);
+}
+
 .training-records-hero {
     display: flex;
     align-items: center;
@@ -2915,6 +2948,24 @@ body.is-app-scrollable .app-shell {
 
 .weekly-receipt-cover:active {
     transform: scale(0.985);
+}
+
+.weekly-receipt-cover.is-locked {
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+.weekly-receipt-cover.is-locked .weekly-receipt-cover-top {
+    background: #64748b;
+}
+
+.weekly-receipt-cover.is-locked .weekly-receipt-seal {
+    background: #475569;
+    animation: none;
+}
+
+.weekly-receipt-cover.is-locked .weekly-receipt-open-cta {
+    background: #f1f5f9;
+    color: #475569;
 }
 
 .weekly-receipt-cover-top {
