@@ -1368,8 +1368,9 @@ function App() {
     const dailyPreviewParams = new URLSearchParams(window.location.search);
     const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
     const isDailyCelebratePreview = dailyPreviewParams.has('dailyCelebratePreview');
+    const weeklyReportGatePreview = dailyPreviewParams.has('weeklyReportGatePreview');
     const isWeeklyReportPreview = isTestDemoBuild || dailyPreviewParams.has('weeklyReportPreview') || dailyPreviewParams.has('weeklyReportPopupPreview') || dailyPreviewParams.has('weeklyReportDemo');
-    const weeklyReportGoal = isWeeklyReportPreview ? 6 : WEEKLY_DAILY_GOAL;
+    const weeklyReportGoal = weeklyReportGatePreview ? 7 : (isWeeklyReportPreview ? 6 : WEEKLY_DAILY_GOAL);
     const previewDailyWeekDays = isDailyRewardPreview
         ? dailyWeekDays.map((day, index) => ({ ...day, completed: index < WEEKLY_DAILY_GOAL }))
         : dailyWeekDays;
@@ -2027,7 +2028,6 @@ function App() {
         isEnglish,
         preview: isWeeklyReportPreview
     });
-    const weeklyReportGatePreview = urlParams.has('weeklyReportGatePreview');
     const weeklyReportBasicUnlockDays = 3;
     const weeklyReportFullUnlockDays = 7;
     const weeklyReportHasBasicAccess = weeklyReport.completedDays >= weeklyReportBasicUnlockDays;
