@@ -3614,8 +3614,8 @@ function App() {
                                     </button>
                                     <button
                                         type="button"
-                                        aria-label={isEnglish ? 'Next month' : '下个月'}
-                                        title={isEnglish ? 'Next month' : '下个月'}
+                                        aria-label={isEnglish ? (heatmapMonthOffset < 0 ? 'Current month' : 'Next month') : (heatmapMonthOffset < 0 ? '回到本月' : '下个月')}
+                                        title={isEnglish ? (heatmapMonthOffset < 0 ? 'Current month' : 'Next month') : (heatmapMonthOffset < 0 ? '回到本月' : '下个月')}
                                         disabled={heatmapMonthOffset >= 0}
                                         onClick={() => shiftHeatmapMonth(1)}
                                     >

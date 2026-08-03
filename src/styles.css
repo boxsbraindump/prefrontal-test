@@ -907,7 +907,7 @@ body.is-app-scrollable .app-shell {
 .training-records-heatmap-cell.level-0,
 .training-records-heatmap-legend i.level-0 {
     background: #e2e8f0;
-    border: 1px solid #cbd5e1;
+    border: 0;
 }
 
 .training-records-heatmap-cell.is-empty {
