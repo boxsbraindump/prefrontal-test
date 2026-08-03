@@ -1293,7 +1293,27 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
 function App() {
     const DEFAULT_TASK_BESTS = { schulte: 0, stroop: 0, nback: 0, setgame: 0, neuroncount: 0 };
     const urlParams = new URLSearchParams(window.location.search);
-    const isTestDemoBuild = window.location.hostname === 'boxsbraindump.github.io' && window.location.pathname.startsWith('/prefrontal-test');
+    const isTestRepo = window.location.hostname === 'boxsbraindump.github.io' && window.location.pathname.startsWith('/prefrontal-test');
+    // Test now behaves like a real local-data build by default. Add ?demoData=1 only when a scripted demo is needed.
+    const isTestDemoBuild = isTestRepo && urlParams.has('demoData');
+    const resetTestDataToken = urlParams.get('resetTestData');
+    if (isTestRepo && resetTestDataToken) {
+        const resetMarker = `pfl_test_reset_${resetTestDataToken}`;
+        try {
+            if (!sessionStorage.getItem(resetMarker)) {
+                const keepKeys = new Set(['prefrontal_lab_lang', 'prefrontal_lab_sound_enabled']);
+                for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+                    const key = localStorage.key(index);
+                    if (key && !keepKeys.has(key) && (key.startsWith('pfl_') || key.startsWith('prefrontal_lab_') || key.startsWith('brain_train_pro_'))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                sessionStorage.setItem(resetMarker, '1');
+            }
+        } catch (error) {
+            // A blocked storage context should still be able to open the test app.
+        }
+    }
     // 归因:接住 ?from= 参数(小红书链接 UTM)。首次带 from 到访即记住(首触归因),之后沿用。
     const acquisitionSource = (() => {
         try {
