@@ -311,7 +311,7 @@ const OWNER_TOKEN_KEY = 'prefrontal_lab_owner_token';
 const DAILY_STORAGE_KEY = 'prefrontal_lab_daily_v4';
 const SOUND_STORAGE_KEY = 'prefrontal_lab_sound_enabled';
 const WEEKLY_DAILY_GOAL = 5;
-const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || '/api/retention';
+const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || (window.location.hostname === 'boxsbraindump.github.io' ? '' : '/api/retention');
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
     arena: 'Cognitive Arena',
@@ -656,7 +656,7 @@ const readRetentionData = () => {
 };
 
 const writeRetentionData = (data) => {
-    localStorage.setItem(RETENTION_STORAGE_KEY, JSON.stringify(data));
+    try { localStorage.setItem(RETENTION_STORAGE_KEY, JSON.stringify(data)); } catch (error) { }
 };
 
 const readDailyProgress = () => {
@@ -675,7 +675,7 @@ const readDailyProgress = () => {
 };
 
 const writeDailyProgress = (data) => {
-    localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(data));
+    try { localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(data)); } catch (error) { }
 };
 
 const getDailyStreak = (days, today = getDayKey()) => {
