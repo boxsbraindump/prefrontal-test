@@ -906,8 +906,8 @@ body.is-app-scrollable .app-shell {
 
 .training-records-heatmap-cell.level-0,
 .training-records-heatmap-legend i.level-0 {
-    background: #eef2ff;
-    border: 0;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
 }
 
 .training-records-heatmap-cell.is-empty {
@@ -916,12 +916,12 @@ body.is-app-scrollable .app-shell {
 
 .training-records-heatmap-cell.level-1,
 .training-records-heatmap-legend i.level-1 {
-    background: #e0e7ff;
+    background: #a5b4fc;
 }
 
 .training-records-heatmap-cell.level-2,
 .training-records-heatmap-legend i.level-2 {
-    background: #a5b4fc;
+    background: #818cf8;
 }
 
 .training-records-heatmap-cell.level-3,

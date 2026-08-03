@@ -3612,16 +3612,15 @@ function App() {
                                     >
                                         <Icon name="chevron-left" className="w-4 h-4" />
                                     </button>
-                                    {heatmapMonthOffset < 0 && (
-                                        <button
-                                            type="button"
-                                            aria-label={isEnglish ? 'Current month' : '回到本月'}
-                                            title={isEnglish ? 'Current month' : '回到本月'}
-                                            onClick={() => shiftHeatmapMonth(1)}
-                                        >
-                                            <Icon name="chevron-right" className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        aria-label={isEnglish ? 'Next month' : '下个月'}
+                                        title={isEnglish ? 'Next month' : '下个月'}
+                                        disabled={heatmapMonthOffset >= 0}
+                                        onClick={() => shiftHeatmapMonth(1)}
+                                    >
+                                        <Icon name="chevron-right" className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
                             <div className="training-records-heatmap-layout">
