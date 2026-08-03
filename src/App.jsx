@@ -216,6 +216,7 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
+        "重新设计了“我的”页面：将训练记录、周报和数据入口集中到一个独立界面，让训练进度更清晰、更容易查看。",
         "新增训练记录与周报：查看训练天数、完成局数、最高分、准确率和训练偏好。",
         "训练节奏支持按月查看：可用箭头或左右滑动浏览历史月份，点击日期查看当天记录。",
         "优化记录页解锁逻辑：训练记录不足时也能查看已有内容，不会被空白页面挡住。",
@@ -223,6 +224,7 @@ const UPDATE_LINES = {
         "修复电脑端“我的”页面顶部错位和内容遮挡，并改善移动端训练记录浏览体验。"
     ],
     en: [
+        "Redesigned My Lab as a dedicated space for Training Records, Weekly Reports, and personal data, making progress easier to follow.",
         "Added Training Records and Weekly Reports for training days, sessions, best scores, accuracy, and preferences.",
         "Training Rhythm now supports monthly browsing with arrows or horizontal swipes, plus daily record details.",
         "Improved record access so existing training history remains viewable even with limited training days.",
