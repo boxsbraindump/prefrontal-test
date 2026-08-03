@@ -815,10 +815,13 @@ body.is-app-scrollable .app-shell {
 
 .training-records-month-arrow {
     display: inline-block;
-    font-size: 22px;
-    font-weight: 500;
-    line-height: 18px;
-    transform: translateY(-1px);
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .training-records-heatmap-layout {

@@ -3619,7 +3619,9 @@ function App() {
                                         disabled={heatmapMonthOffset >= 0}
                                         onClick={() => shiftHeatmapMonth(1)}
                                     >
-                                        <span className="training-records-month-arrow" aria-hidden="true">›</span>
+                                        <svg className="training-records-month-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                            <path d="m9 18 6-6-6-6" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
