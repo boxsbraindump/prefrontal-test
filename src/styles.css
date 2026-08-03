@@ -813,6 +813,14 @@ body.is-app-scrollable .app-shell {
     opacity: 0.35;
 }
 
+.training-records-month-arrow {
+    display: inline-block;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 18px;
+    transform: translateY(-1px);
+}
+
 .training-records-heatmap-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 132px;

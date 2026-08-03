@@ -3619,7 +3619,7 @@ function App() {
                                         disabled={heatmapMonthOffset >= 0}
                                         onClick={() => shiftHeatmapMonth(1)}
                                     >
-                                        <Icon name="chevron-right" className="w-4 h-4" />
+                                        <span className="training-records-month-arrow" aria-hidden="true">›</span>
                                     </button>
                                 </div>
                             </div>
