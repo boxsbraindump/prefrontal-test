@@ -1309,8 +1309,8 @@ function App() {
     const [view, setView] = useState(() => {
         if (urlParams.has('analytics') && urlParams.get('owner') === '1') return 'analytics';
         if (urlParams.has('trainingRecordsPreview') || urlParams.has('recordsDemo')) return 'training-records';
-        if (urlParams.has('weeklyReportDemo') || urlParams.has('weeklyReportGatePreview')) return 'weekly-report';
         if (urlParams.has('my-page-preview') || urlParams.has('myPagePreview')) return 'settings';
+        if (urlParams.has('weeklyReportDemo') || urlParams.has('weeklyReportGatePreview')) return 'weekly-report';
         return 'home';
     });
     const [mode, setMode] = useState('normal');
