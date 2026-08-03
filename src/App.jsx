@@ -1598,6 +1598,10 @@ function App() {
         return base;
     });
 
+    const displayedBestScore = isTestDemoBuild
+        ? Math.max(1130, Number(history.bestScore) || 0)
+        : (Number(history.bestScore) || 0);
+
     // ==========================================
     // ✨ 在这里插入：更新公告状态管理
     // ==========================================
@@ -3195,7 +3199,7 @@ function App() {
                             <>
                                 <div className="z-10">
                                     <div className="text-[10px] opacity-60 font-bold uppercase tracking-widest">{mode === 'infinite' ? ui.infiniteScore : ui.bestSynced}</div>
-                                    <div className="score-value text-4xl font-black">{mode === 'comp' ? (history.bestCompScore || 0) : mode === 'infinite' ? '∞' : (history.bestScore || 0)}</div>
+                                    <div className="score-value text-4xl font-black">{mode === 'comp' ? (history.bestCompScore || 0) : mode === 'infinite' ? '∞' : displayedBestScore}</div>
                                 </div>
                                 <div className="unlock-pill z-10 text-[10px] font-bold bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-md">
                                     {mode === 'infinite' ? ui.infinitePill : history.isHardUnlocked ? "🔓 Advanced On" : "🔒 500 Unlock"}
