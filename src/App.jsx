@@ -33,7 +33,7 @@ const LatexFmt = ({ text }) => {
 
 const UI_TEXT = {
     zh: {
-        appTitle: "前额叶实验室 6.1.6",
+        appTitle: "前额叶实验室 6.1.7",
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
@@ -47,7 +47,7 @@ const UI_TEXT = {
         arenaShortTitle: "全能竞技",
         arenaSubtitle: "混合：舒尔特方格 / Stroop反应 / 快速SET / N-Back / 神经元计数",
         updateTitle: "实验室更新公告",
-        updateVersion: "Version 6.1.6",
+        updateVersion: "Version 6.1.7",
         updateButton: "知道了，这就去练脑",
         startTraining: "开始训练",
         firstPlayKicker: "\u7b2c\u4e00\u6b21\u6765\uff1f",
@@ -123,7 +123,7 @@ const UI_TEXT = {
         backHome: "返回大厅"
     },
     en: {
-        appTitle: "Prefrontal Lab 6.1.6",
+        appTitle: "Prefrontal Lab 6.1.7",
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
@@ -137,7 +137,7 @@ const UI_TEXT = {
         arenaShortTitle: "Arena",
         arenaSubtitle: "Mixed training: Schulte Grid / Stroop / SET / N-Back / Neuron Counting",
         updateTitle: "Lab Update",
-        updateVersion: "Version 6.1.6",
+        updateVersion: "Version 6.1.7",
         updateButton: "Got it, start training",
         startTraining: "Start Training",
         firstPlayKicker: "New here?",
@@ -216,14 +216,18 @@ const UI_TEXT = {
 
 const UPDATE_LINES = {
     zh: [
-        "每日挑战新增两个变体：字母迷阵、6×6 扩容网格。",
-        "每日挑战改为每天轮换，不再每周重复，天天有新花样。",
-        "新增震动反馈：答对、答错、完成都有手感（安卓设备）。"
+        "新增训练记录与周报：查看训练天数、完成局数、最高分、准确率和训练偏好。",
+        "训练节奏支持按月查看：可用箭头或左右滑动浏览历史月份，点击日期查看当天记录。",
+        "优化记录页解锁逻辑：训练记录不足时也能查看已有内容，不会被空白页面挡住。",
+        "优化热力图可读性：训练日与无训练日区分更清楚，月份切换箭头行为更直观。",
+        "修复电脑端“我的”页面顶部错位和内容遮挡，并改善移动端训练记录浏览体验。"
     ],
     en: [
-        "New Daily Challenge variants: Letter Maze and a 6×6 grid.",
-        "Daily Challenge now rotates daily — no more weekly repeats.",
-        "Added haptic feedback for correct, wrong, and complete (Android)."
+        "Added Training Records and Weekly Reports for training days, sessions, best scores, accuracy, and preferences.",
+        "Training Rhythm now supports monthly browsing with arrows or horizontal swipes, plus daily record details.",
+        "Improved record access so existing training history remains viewable even with limited training days.",
+        "Made the heatmap easier to read with clearer training-day colors and more intuitive month navigation.",
+        "Fixed desktop My Lab header overlap and improved mobile browsing across Training Records."
     ]
 };
 
@@ -1600,13 +1604,13 @@ function App() {
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
         // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        try { return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.6_update'); } catch (error) { return shouldPreviewUpdate; }
+        try { return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.1.7_update'); } catch (error) { return shouldPreviewUpdate; }
     });
 
     const closeUpdateNote = () => {
         playSound('tap');
         // 玩家点击按钮后，在本地存入 'true'，下次刷新就不会再弹了
-        localStorage.setItem('prefrontal_lab_v6.1.6_update', 'true');
+        localStorage.setItem('prefrontal_lab_v6.1.7_update', 'true');
         setShowUpdateNote(false);
     };
 
