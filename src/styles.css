@@ -581,8 +581,9 @@ body.is-app-scrollable .app-shell {
 
 .weekly-report-locked-state {
     min-height: 520px;
-    border-color: #d1fae5;
-    box-shadow: 0 16px 34px rgba(16, 185, 129, 0.08);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .weekly-report-locked-state .training-records-locked-icon {
