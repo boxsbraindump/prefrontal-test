@@ -93,6 +93,9 @@ const UI_TEXT = {
         dailySeeTomorrow: "明天见",
         dailyPracticeAgain: "再练一次",
         dailyResultNote: "今天完成了一次专注训练，明天回来继续累积你的记录。",
+        dailyGuideKicker: "\u4eca\u65e5\u73a9\u6cd5",
+        dailyGuideStart: "\u660e\u767d\u4e86\uff0c\u5f00\u59cb\u6311\u6218",
+        dailyGuideSkip: "\u5148\u770b\u770b",
         dailyCategories: {
             schulte: "视觉搜索挑战",
             stroop: "反应控制挑战",
@@ -183,6 +186,9 @@ const UI_TEXT = {
         dailySeeTomorrow: "See you tomorrow",
         dailyPracticeAgain: "Practice again",
         dailyResultNote: "One focused session is in the record. Come back tomorrow and keep building your rhythm.",
+        dailyGuideKicker: "Today's format",
+        dailyGuideStart: "Got it, start challenge",
+        dailyGuideSkip: "Maybe later",
         dailyCategories: {
             schulte: "visual search challenge",
             stroop: "reaction control challenge",
@@ -719,7 +725,7 @@ const getWeeklyDailyDays = (days, today = getDayKey()) => {
     });
 };
 
-const trackRetentionEvent = (eventName, payload = {}) => {
+const trackRetentionEvent = (eventName, payload = {}, { syncCloud = true } = {}) => {
     const now = new Date();
     const day = getDayKey(now);
     const data = readRetentionData();
@@ -758,7 +764,7 @@ const trackRetentionEvent = (eventName, payload = {}) => {
     };
 
     writeRetentionData(nextData);
-    sendCloudRetentionEvent(eventName, nextData.visitorId, nextData.firstSeen, payload);
+    if (syncCloud) sendCloudRetentionEvent(eventName, nextData.visitorId, nextData.firstSeen, payload);
     return nextData;
 };
 
@@ -1333,7 +1339,20 @@ function App() {
         if (urlParams.has('weeklyReportDemo') || urlParams.has('weeklyReportGatePreview')) return 'weekly-report';
         return 'home';
     });
-    const [mode, setMode] = useState('normal');
+    const [mode, setMode] = useState(() => urlParams.has('dailyGuidePreview') ? 'daily' : 'normal');
+    const [dailyGuideVariant] = useState(() => {
+        const forced = urlParams.get('dailyGuide');
+        if (forced === 'with-intro' || forced === 'direct') return forced;
+        try {
+            const stored = localStorage.getItem('pfl_daily_guide_v1');
+            if (stored === 'with-intro' || stored === 'direct') return stored;
+            const next = Math.random() < 0.5 ? 'with-intro' : 'direct';
+            localStorage.setItem('pfl_daily_guide_v1', next);
+            return next;
+        } catch (error) {
+            return 'direct';
+        }
+    });
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastScore, setLastScore] = useState(0);
@@ -1342,6 +1361,7 @@ function App() {
     const [isError, setIsError] = useState(false);
     const [answerFeedback, setAnswerFeedback] = useState(null);
     const [showInfo, setShowInfo] = useState(null);
+    const [showDailyGuide, setShowDailyGuide] = useState(false);
     const [weeklyReceiptOpen, setWeeklyReceiptOpen] = useState(false);
     const [weeklyReportStep, setWeeklyReportStep] = useState(0);
     const [weeklyReportCount, setWeeklyReportCount] = useState(0);
@@ -1495,6 +1515,59 @@ function App() {
         const nextData = trackRetentionEvent(eventName, payload);
         setRetentionData(nextData);
         return nextData;
+    };
+
+    const recordLocalRetention = (eventName, payload = {}) => {
+        const nextData = trackRetentionEvent(eventName, payload, { syncCloud: false });
+        setRetentionData(nextData);
+        return nextData;
+    };
+
+    const recordDailyGuideEvent = (stage, extra = {}, variantOverride = dailyGuideVariant) => {
+        const variantLabel = variantOverride === 'with-intro' ? 'intro' : 'direct';
+        const record = urlParams.has('dailyGuidePreview') ? recordLocalRetention : recordRetention;
+        return record('daily_guide_' + stage + '_' + variantLabel, {
+            sessionId: sessionIdRef.current,
+            task: 'daily',
+            mode: 'daily',
+            dailyChallengeId: dailySpec.id,
+            dailyInstanceId: dailySpec.instanceId,
+            dailyTask: dailySpec.task,
+            dailyDay: dailySpec.day,
+            dailyVariant: dailySpec.variant,
+            dailyCompletion: dailySpec.completion,
+            dailyDuration: dailySpec.duration,
+            dailyGuideExperiment: 'daily-guide-v1',
+            dailyGuideVariant: variantOverride,
+            ...extra
+        });
+    };
+
+    useEffect(() => {
+        if (view !== 'home' || mode !== 'daily') return;
+        const exposureKey = dailySpec.instanceId + ':' + dailyGuideVariant;
+        if (dailyGuideExposureRef.current === exposureKey) return;
+        dailyGuideExposureRef.current = exposureKey;
+        recordDailyGuideEvent('exposure');
+    }, [view, mode, dailySpec.instanceId, dailyGuideVariant]);
+
+    const openDailyGuide = () => {
+        playSound('tap');
+        recordDailyGuideEvent('open');
+        setShowDailyGuide(true);
+    };
+
+    const closeDailyGuide = () => {
+        playSound('tap');
+        recordDailyGuideEvent('abandon');
+        setShowDailyGuide(false);
+    };
+
+    const startDailyFromGuide = () => {
+        playSound('tap');
+        recordDailyGuideEvent('start');
+        setShowDailyGuide(false);
+        startChallenge(dailySpec.task);
     };
 
     const resetRetentionData = () => {
@@ -2407,6 +2480,7 @@ function App() {
     const answerLock = useRef(false);
     const sessionIdRef = useRef(`session-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     const currentRunRef = useRef(null);
+    const dailyGuideExposureRef = useRef('');
     const runStatsRef = useRef({ task: null, attempts: 0, correct: 0, incorrect: 0, startedAtMs: 0 });
     const soundEngineRef = useRef(null);
 
@@ -2713,6 +2787,8 @@ function App() {
             dailyVariant: mode === 'daily' ? activeDailySpec.variant : null,
             dailyCompletion: mode === 'daily' ? activeDailySpec.completion : null,
             dailyDuration: mode === 'daily' ? activeDailySpec.duration : null,
+            dailyGuideExperiment: mode === 'daily' ? 'daily-guide-v1' : null,
+            dailyGuideVariant: mode === 'daily' ? dailyGuideVariant : null,
             mode,
             startedAt: new Date().toISOString()
         };
@@ -2726,7 +2802,9 @@ function App() {
             dailyDay: mode === 'daily' ? activeDailySpec.day : null,
             dailyVariant: mode === 'daily' ? activeDailySpec.variant : null,
             dailyCompletion: mode === 'daily' ? activeDailySpec.completion : null,
-            dailyDuration: mode === 'daily' ? activeDailySpec.duration : null
+            dailyDuration: mode === 'daily' ? activeDailySpec.duration : null,
+            dailyGuideExperiment: mode === 'daily' ? 'daily-guide-v1' : null,
+            dailyGuideVariant: mode === 'daily' ? dailyGuideVariant : null
         });
         if (mode === 'comp') {
             setTimeLeft(90);
@@ -2916,6 +2994,16 @@ function App() {
         setLastRunStats(runStats);
 
         const completedTask = currentRunRef.current?.task || (isComp ? 'arena' : view);
+        if (isDaily && currentRunRef.current?.dailyGuideVariant) {
+            recordDailyGuideEvent('complete', {
+                score: currentFinalScore,
+                attempts: runStats.attempts,
+                correct: runStats.correct,
+                incorrect: runStats.incorrect,
+                accuracy: runStats.attempts ? Math.round((runStats.correct / runStats.attempts) * 100) : 0,
+                durationSeconds: runStats.durationSeconds
+            }, currentRunRef.current.dailyGuideVariant);
+        }
         recordRetention('game_complete', {
             sessionId: sessionIdRef.current,
             task: completedTask,
@@ -2932,6 +3020,8 @@ function App() {
             dailyVariant: currentRunRef.current?.dailyVariant || null,
             dailyCompletion: currentRunRef.current?.dailyCompletion || null,
             dailyDuration: currentRunRef.current?.dailyDuration || null,
+            dailyGuideExperiment: currentRunRef.current?.dailyGuideExperiment || null,
+            dailyGuideVariant: currentRunRef.current?.dailyGuideVariant || null,
             durationSeconds: runStats.durationSeconds
         });
 
@@ -3409,7 +3499,14 @@ function App() {
                                         <button
                                             className={`daily-start-button ${dailyRecord.completed ? 'is-secondary' : ''}`}
                                             type="button"
-                                            onClick={() => startChallenge(dailySpec.task)}
+                                            onClick={() => {
+                                                if (dailyGuideVariant === 'with-intro') {
+                                                    openDailyGuide();
+                                                    return;
+                                                }
+                                                recordDailyGuideEvent('start');
+                                                startChallenge(dailySpec.task);
+                                            }}
                                         >
                                             <Icon name={dailyRecord.completed ? 'rotate-cw' : 'play'} className="w-4 h-4" />
                                             {dailyRecord.completed ? ui.dailyReplay : ui.dailyStart}
@@ -4446,6 +4543,43 @@ function App() {
                 </div>
             )}
 
+            {showDailyGuide && (
+                <div className="daily-guide-modal fixed inset-0 z-[105] flex items-center justify-center p-5" onClick={closeDailyGuide}>
+                    <div
+                        className="daily-guide-modal-card"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="daily-guide-title"
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <button type="button" className="daily-guide-close" aria-label={ui.dailyGuideSkip} onClick={closeDailyGuide}>
+                            <Icon name="x" className="w-4 h-4" />
+                        </button>
+                        <div className={'daily-guide-icon daily-theme-' + dailySpec.task}>
+                            <Icon name={TASK_DATA[dailySpec.task].icon} className="w-7 h-7" />
+                        </div>
+                        <div className="daily-guide-kicker">{ui.dailyGuideKicker}</div>
+                        <h2 id="daily-guide-title">{dailyTheme.title}</h2>
+                        <p className="daily-guide-subtitle">{dailyTheme.subtitle}</p>
+                        <div className="daily-guide-rule">
+                            <div className="daily-guide-rule-label">{dailyTheme.goal || ui.dailyGoal}</div>
+                            <div className="daily-guide-rule-copy"><LatexFmt text={getTaskGuide(dailySpec.task)} /></div>
+                            <div className="daily-guide-meta">
+                                <span><Icon name={dailySpec.completion === 'finish-grid' ? 'target' : 'timer'} className="w-3.5 h-3.5" />{dailyRuleLabel}</span>
+                                <span><Icon name="clock-3" className="w-3.5 h-3.5" />{dailyDurationLabel}</span>
+                            </div>
+                        </div>
+                        <button type="button" className="daily-guide-primary" onClick={startDailyFromGuide}>
+                            <Icon name="play" className="w-4 h-4" />
+                            {ui.dailyGuideStart}
+                        </button>
+                        <button type="button" className="daily-guide-secondary" onClick={closeDailyGuide}>
+                            {ui.dailyGuideSkip}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {showInfo && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40" onClick={() => setShowInfo(null)}>
                     <div className="bg-white w-full max-w-xs rounded-[2.8rem] p-8 relative animate-pop-center" onClick={e => e.stopPropagation()}>
@@ -4470,6 +4604,11 @@ function App() {
                                     return;
                                 }
                                 if (currentRunRef.current) {
+                                    if (mode === 'daily' && currentRunRef.current.dailyGuideVariant) {
+                                        recordDailyGuideEvent('abandon', {
+                                            durationSeconds: getCurrentRunAnalytics().durationSeconds || 0
+                                        }, currentRunRef.current.dailyGuideVariant);
+                                    }
                                     recordRetention('game_abandon', {
                                         sessionId: sessionIdRef.current,
                                         task: currentRunRef.current.task,
@@ -4481,7 +4620,9 @@ function App() {
                                         dailyDay: currentRunRef.current.dailyDay || null,
                                         dailyVariant: currentRunRef.current.dailyVariant || null,
                                         dailyCompletion: currentRunRef.current.dailyCompletion || null,
-                                        dailyDuration: currentRunRef.current.dailyDuration || null
+                                        dailyDuration: currentRunRef.current.dailyDuration || null,
+                                        dailyGuideExperiment: currentRunRef.current.dailyGuideExperiment || null,
+                                        dailyGuideVariant: currentRunRef.current.dailyGuideVariant || null
                                     });
                                     currentRunRef.current = null;
                                 }
