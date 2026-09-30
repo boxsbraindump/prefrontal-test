@@ -5118,11 +5118,9 @@ body.is-app-scrollable .app-shell {
 }
 
 @media (max-width: 560px) {
-    .home-screen.app-content-screen:not(.is-daily-home) {
-        padding-bottom: max(96px, calc(84px + env(safe-area-inset-bottom))) !important;
-    }
-
-    .home-screen.app-content-screen.is-daily-home {
+    /* 三个首页都能上下滚动，与 iOS 的 ScrollView 一致。原先训练页和竞技页被锁成一屏，
+       小屏手机上最后几张卡会被底部导航挡住、点不到。 */
+    .home-screen.app-content-screen {
         height: auto !important;
         min-height: 100dvh;
         padding-bottom: var(--mobile-nav-clearance) !important;
@@ -5133,9 +5131,88 @@ body.is-app-scrollable .app-shell {
         -webkit-overflow-scrolling: touch;
     }
 
-    .home-screen.app-content-screen.is-daily-home .task-section {
+    .home-screen.app-content-screen .task-section {
         margin-bottom: 0 !important;
     }
+}
+
+/* 训练页顶部的每日挑战卡，尺寸照 iOS（WebsiteTrainingHome.swift 的 scoreCardFace）：
+   高 112，今天已完成时 96；字号 10 / 28 / 11 / 10；右侧 16 的 chevron。 */
+.home-screen .score-card.home-streak-card {
+    height: 112px;
+    min-height: 112px !important;
+    padding: 24px !important;
+    margin-bottom: 12px !important;
+    border-radius: 24px !important;
+    gap: 8px;
+    border: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.18s ease;
+}
+
+.home-screen .score-card.home-streak-card.is-done {
+    height: 96px;
+    min-height: 96px !important;
+    padding: 16px 18px !important;
+}
+
+.home-screen .score-card.home-streak-card:active {
+    transform: scale(0.98);
+}
+
+.home-streak-copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.home-streak-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.65;
+    line-height: 1.2;
+}
+
+.home-streak-figure {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.home-screen .home-streak-card .home-streak-figure .score-value {
+    font-size: 28px !important;
+    font-weight: 900;
+    line-height: 1.05 !important;
+    height: auto !important;
+}
+
+.home-streak-unit {
+    font-size: 11px;
+    font-weight: 900;
+    opacity: 0.65;
+}
+
+.home-streak-status {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.78;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.home-streak-chevron {
+    display: flex;
+    align-items: center;
+    opacity: 0.65;
+    flex-shrink: 0;
 }
 
 @media (min-width: 900px) {
@@ -5150,5 +5227,41 @@ body.is-app-scrollable .app-shell {
     .home-screen.app-content-screen {
         height: 100dvh;
         overflow-y: auto !important;
+    }
+}
+
+/* 游戏顶栏返回键，照 iOS 1.0.1 的修复：深色 18pt 箭头，整块 44×44 都能点（原先灰色、只有 40×40）。 */
+.game-back-button {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-back-button svg {
+    stroke-width: 2.2;
+}
+
+/* 首页能滚动之后，小屏不再把卡片列表压进一屏（原先按 5 行平分屏高，第 6 个游戏加进来后前 5 张被压到 46px）。
+   卡片尺寸照 iOS：每张高 82，间距 14。 */
+@media (max-width: 560px) {
+    .home-screen .task-section {
+        flex: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    .home-screen .task-list {
+        height: auto !important;
+        grid-template-rows: none !important;
+        grid-auto-rows: 82px;
+        gap: 14px !important;
+    }
+
+    .home-screen .task-card {
+        height: 82px;
+        min-height: 82px !important;
     }
 }

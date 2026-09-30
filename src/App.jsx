@@ -37,7 +37,6 @@ const UI_TEXT = {
         bestSynced: "历史最高 (已同步)",
         normal: "基础",
         hard: "进阶",
-        hardLocked: "🔒 进阶",
         infinite: "无限",
         infiniteMode: "无限模式",
         infiniteScore: "自由练习",
@@ -147,7 +146,6 @@ const UI_TEXT = {
         bestSynced: "Personal Best",
         normal: "Basic",
         hard: "Advanced",
-        hardLocked: "🔒 Advanced",
         infinite: "Endless",
         infiniteMode: "Endless Mode",
         infiniteScore: "Free Practice",
@@ -361,6 +359,8 @@ const SOUND_STORAGE_KEY = 'prefrontal_lab_sound_enabled';
 const APPEARANCE_STORAGE_KEY = 'pfl_appearance';
 const APPEARANCE_OPTIONS = ['system', 'light', 'dark'];
 const WEEKLY_DAILY_GOAL = 5;
+// 离开 App 超过这么久，限时对局就结束而不是接着玩（iOS GameSession.maximumResumableAbsence）。
+const MAX_RESUMABLE_ABSENCE_MS = 30000;
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || (window.location.hostname === 'boxsbraindump.github.io' ? '' : '/api/retention');
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
@@ -1387,6 +1387,11 @@ function App() {
         return 'home';
     });
     const [mode, setMode] = useState('normal');
+    // 训练 tab 记住上次选的档位：去每日挑战或竞技转一圈再回来，仍是原来那一档（与 iOS 一致）。
+    const lastTrainingModeRef = useRef('normal');
+    useEffect(() => {
+        if (mode === 'normal' || mode === 'hard' || mode === 'infinite') lastTrainingModeRef.current = mode;
+    }, [mode]);
     const [arenaDifficulty, setArenaDifficulty] = useState('basic');
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -1453,6 +1458,47 @@ function App() {
     const dailySpec = getDailySpec();
     const dailyRecord = dailyProgress.days?.[dailySpec.day] || {};
     const dailyStreak = getDailyStreak(dailyProgress.days, dailySpec.day);
+    // 训练页顶部的每日挑战卡，四种状态与文案照搬 iOS（WebsiteTrainingHome.swift 的 streakState）。
+    // dailyStreak 从今天往回数，今天没做就是 0；这里要显示的是「还活着的连续记录」，所以从昨天往回数。
+    const trainingStreakState = (() => {
+        const cost = isEnglish ? 'a minute or two' : '一到两分钟';
+        const dayUnit = (count) => isEnglish ? (count === 1 ? 'day' : 'days') : '天';
+        if (dailyRecord.completed) {
+            return {
+                eyebrow: isEnglish ? 'DAILY STREAK' : '连续挑战',
+                figure: String(dailyStreak),
+                unit: dayUnit(dailyStreak),
+                status: isEnglish ? "Today's challenge is done — come back tomorrow." : '今日挑战已完成，明天回来继续。'
+            };
+        }
+        const liveRun = getDailyStreak(dailyProgress.days, getOffsetDayKey(dailySpec.day, -1));
+        if (liveRun > 0) {
+            return {
+                eyebrow: isEnglish ? 'DAILY STREAK' : '连续挑战',
+                figure: String(liveRun),
+                unit: dayUnit(liveRun),
+                status: isEnglish
+                    ? `${cost} — finish it and the run reaches day ${liveRun + 1}.`
+                    : `${cost}，完成后连续记录就是第 ${liveRun + 1} 天。`
+            };
+        }
+        const hasEverCompleted = Object.values(dailyProgress.days || {}).some(value => value?.completed);
+        if (!hasEverCompleted) {
+            return {
+                eyebrow: isEnglish ? 'DAILY CHALLENGE' : '每日挑战',
+                figure: isEnglish ? 'Start' : '开始',
+                unit: null,
+                status: isEnglish ? `${cost} — finish it and day 1 is yours.` : `${cost}，完成就点亮连续记录第 1 天。`
+            };
+        }
+        // 连续记录断了不提，只说今天的挑战还没做。
+        return {
+            eyebrow: isEnglish ? 'DAILY CHALLENGE' : '每日挑战',
+            figure: isEnglish ? 'To do' : '待完成',
+            unit: null,
+            status: isEnglish ? `${cost} — finish it and the run restarts at day 1.` : `${cost}，完成后连续记录从第 1 天重新开始。`
+        };
+    })();
     const dailyWeekDays = getWeeklyDailyDays(dailyProgress.days, dailySpec.day);
     const dailyPreviewParams = new URLSearchParams(window.location.search);
     const isDailyRewardPreview = dailyPreviewParams.has('dailyRewardPreview');
@@ -1628,7 +1674,8 @@ function App() {
     };
 
     const getTaskTitle = (type) => {
-        const fallback = type === 'arena'
+        // 基础竞技记为 arena-basic（埋点要和进阶分开），显示时同样是竞技场，不能落到「训练」。
+        const fallback = (type === 'arena' || type === 'arena-basic')
             ? ui.arenaShortTitle
             : type === 'daily'
                 ? ui.dailyTitle
@@ -1699,9 +1746,6 @@ function App() {
         return base;
     });
 
-    const displayedBestScore = isTestDemoBuild
-        ? Math.max(1130, Number(history.bestScore) || 0)
-        : (Number(history.bestScore) || 0);
     // 两档各记各的最高分，所以竞技页显示的永远是当前这一档的纪录。
     const arenaBestScore = isArenaAdvanced ? (history.bestCompScore || 0) : (history.bestCompBasicScore || 0);
 
@@ -1709,9 +1753,21 @@ function App() {
     // ✨ 在这里插入：更新公告状态管理
     // ==========================================
     const [showUpdateNote, setShowUpdateNote] = useState(() => {
-        // 检查本地存储，如果这个版本的 Key 不存在，说明是第一次见，返回 true
+        // 这个版本的公告没见过就弹一次——但只对老玩家弹。新装的人（包括安卓包的所有首批用户）
+        // 看到的会是一堆与他无关的「更新」，所以直接记为已读、不弹（与 iOS 计划的规则一致，见 docs/TODO.md 第 6 项）。
         const shouldPreviewUpdate = new URLSearchParams(window.location.search).has('showUpdate');
-        try { return shouldPreviewUpdate || !localStorage.getItem('prefrontal_lab_v6.2.1_update'); } catch (error) { return shouldPreviewUpdate; }
+        if (shouldPreviewUpdate) return true;
+        try {
+            if (localStorage.getItem('prefrontal_lab_v6.2.1_update')) return false;
+            const isReturningPlayer = ['brain_train_pro_v5', 'brain_train_pro_data', DAILY_STORAGE_KEY, RETENTION_STORAGE_KEY]
+                .some(key => localStorage.getItem(key) !== null)
+                || Object.keys(localStorage).some(key => /^prefrontal_lab_v[\d.]+_update$/.test(key));
+            if (!isReturningPlayer) {
+                localStorage.setItem('prefrontal_lab_v6.2.1_update', 'true');
+                return false;
+            }
+            return true;
+        } catch (error) { return false; }
     });
 
     const closeUpdateNote = () => {
@@ -1746,11 +1802,9 @@ function App() {
         setView('weekly-report');
     };
 
+    // 进阶不再要 500 分解锁，与 iOS 一致（iOS 已删除这道门槛，见 docs/MONETIZATION_V1.md）。
+    // 旧存档里的 isHardUnlocked 字段留着不读，不影响任何人。
     const goHomeMode = (nextMode) => {
-        if (nextMode === 'hard' && !history.isHardUnlocked) {
-            playSound('error');
-            return;
-        }
         playSound('tap');
         setMode(nextMode);
         setView('home');
@@ -1786,7 +1840,7 @@ function App() {
             label: ui.navTrain,
             icon: 'dumbbell',
             active: view === 'home' && mode !== 'comp' && mode !== 'daily',
-            onClick: () => goHomeMode((mode === 'comp' || mode === 'daily') ? 'normal' : mode)
+            onClick: () => goHomeMode((mode === 'comp' || mode === 'daily') ? lastTrainingModeRef.current : mode)
         },
         {
             key: 'daily',
@@ -2183,6 +2237,17 @@ function App() {
         preview: isTrainingRecordsPreview,
         monthOffset: heatmapMonthOffset
     });
+    // 「我的」页标着「本周状态」，就永远只算本周，不跟着训练记录页的日 / 周 / 月切换走（与 iOS 一致）。
+    const myWeekRecords = buildTrainingRecordData({
+        retentionData,
+        dailyProgress,
+        today: dailySpec.day,
+        taskTitle: getTaskTitle,
+        isEnglish,
+        range: 'week',
+        preview: isTrainingRecordsPreview,
+        monthOffset: 0
+    });
     const trainingRecordsUnlocked = !urlParams.has('recordsGatePreview');
     const trainingRecordsMaxTask = Math.max(1, ...trainingRecords.taskMix.map(item => item.count));
     const selectedTrainingDayDetail = selectedTrainingDay ? trainingRecords.dayDetails[selectedTrainingDay] : null;
@@ -2515,6 +2580,10 @@ function App() {
     const sessionIdRef = useRef(`session-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     const currentRunRef = useRef(null);
     const runStatsRef = useRef({ task: null, attempts: 0, correct: 0, incorrect: 0, startedAtMs: 0 });
+    const awayMsRef = useRef(0);
+    const hiddenAtRef = useRef(null);
+    const gameLifecycleRef = useRef({});
+    const [isAppHidden, setIsAppHidden] = useState(false);
     const soundEngineRef = useRef(null);
 
     if (!soundEngineRef.current) {
@@ -2828,9 +2897,11 @@ function App() {
         }, kind === 'incomplete' ? 850 : 720);
     };
 
+    // 任何提示显示期间（答对、答错 720ms、没填完 850ms）输入全部锁住，与 iOS 一致；
+    // 原先只在答对时锁，答错提示还在就能再交一次，会连扣两次 10 分。
     const enterCodeDigit = (digit) => {
         setCodeLogic(p => {
-            if (!p.puzzle || p.feedback === 'correct') return p;
+            if (!p.puzzle || p.feedback) return p;
             const entry = p.entry.slice();
             entry[p.selected] = digit;
             // 填完一位后跳到下一个空位；没有空位就停在原地，方便继续改这一位。
@@ -2845,7 +2916,7 @@ function App() {
 
     const deleteCodeDigit = () => {
         setCodeLogic(p => {
-            if (!p.puzzle || p.feedback === 'correct') return p;
+            if (!p.puzzle || p.feedback) return p;
             const entry = p.entry.slice();
             if (entry[p.selected] !== null) {
                 entry[p.selected] = null;
@@ -2873,7 +2944,7 @@ function App() {
 
     const submitCodeLogic = () => {
         const { puzzle, entry } = codeLogic;
-        if (!puzzle || codeLogic.feedback === 'correct') return;
+        if (!puzzle || codeLogic.feedback) return;
         if (entry.some(digit => digit === null)) {
             playSound('error');
             showCodeLogicFeedback('incomplete');
@@ -2905,6 +2976,12 @@ function App() {
     const switchArenaTask = () => {
         const tasks = ['schulte', 'stroop', 'setgame', 'neuroncount', 'nback'];
         const next = tasks[Math.floor(Math.random() * tasks.length)];
+        // 每次轮到 N-Back 都从头开始：清掉上一段的序列和底卡，重新走记忆阶段（与 iOS 一致）。
+        // 原先沿用旧序列，第二次轮到时会直接进入答题，拿上一段的旧数字来比。
+        if (next === 'nback') {
+            nbackSeq.current = [];
+            setNback({ current: null, previous: null, isMatch: false, isReady: false, roundId: null, roundNumber: 0 });
+        }
         initGameCore(next);
         setView(next);
     };
@@ -2955,6 +3032,8 @@ function App() {
             incorrect: 0,
             startedAtMs: Date.now()
         };
+        awayMsRef.current = 0;
+        hiddenAtRef.current = null;
         setLastRunStats(null);
         currentRunRef.current = {
             task: taskName,
@@ -3096,7 +3175,7 @@ function App() {
     const getCurrentRunAnalytics = () => {
         const stats = runStatsRef.current || {};
         const durationSeconds = stats.startedAtMs
-            ? Math.max(1, Math.round((Date.now() - stats.startedAtMs) / 1000))
+            ? Math.max(1, Math.round((Date.now() - stats.startedAtMs - awayMsRef.current) / 1000))
             : 0;
 
         return {
@@ -3165,7 +3244,7 @@ function App() {
             ...runStatsRef.current,
             isImproved: previousBest > 0 && currentFinalScore > previousBest,
             durationSeconds: runStatsRef.current.startedAtMs
-                ? Math.max(1, Math.round((Date.now() - runStatsRef.current.startedAtMs) / 1000))
+                ? Math.max(1, Math.round((Date.now() - runStatsRef.current.startedAtMs - awayMsRef.current) / 1000))
                 : 0
         };
         setLastScore(currentFinalScore);
@@ -3250,17 +3329,12 @@ function App() {
                 taskBestScores[view] = Math.max(taskBestScores[view] || 0, currentFinalScore);
             }
 
-            // 核心修复：解锁条件必须基于【更新后】的最高分，或者已经是解锁状态
-            const hasReachedThreshold = newBestScore >= 500;
-            const updatedUnlockStatus = prev.isHardUnlocked || hasReachedThreshold;
-
             const newHist = {
                         ...prev,
                         bestScore: newBestScore,
                         bestCompScore: newBestCompScore,
                         bestCompBasicScore: newBestCompBasicScore,
-                        taskBestScores,
-                        isHardUnlocked: updatedUnlockStatus
+                        taskBestScores
                     };
 
             localStorage.setItem('brain_train_pro_v5', JSON.stringify(newHist));
@@ -3378,22 +3452,48 @@ function App() {
     // 密码推理不倒计时：它是一道推理题，玩到解出为止，顶栏显示的是已用时间。
     // timeLeft 保持 -1，所以下面那条倒计时 effect 的两个分支都不会命中。
     useEffect(() => {
-        if (view !== 'passwordlogic') return undefined;
+        if (view !== 'passwordlogic' || isAppHidden) return undefined;
         const timer = setInterval(() => {
             setCodeLogic(p => (p.feedback === 'correct' ? p : { ...p, elapsed: p.elapsed + 1 }));
         }, 1000);
         return () => clearInterval(timer);
-    }, [view]);
+    }, [view, isAppHidden]);
 
     useEffect(() => {
         let timer;
-        if (isGameView && !isInfiniteMode && timeLeft > 0) {
+        if (isGameView && !isInfiniteMode && timeLeft > 0 && !isAppHidden) {
             timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
         } else if (timeLeft === 0 && isGameView && !isInfiniteMode) {
             endGame();
         }
         return () => clearInterval(timer);
-    }, [timeLeft, view, isInfiniteMode]);
+    }, [timeLeft, view, isInfiniteMode, isAppHidden]);
+
+    // 离开 App（切后台、锁屏、切标签页）时的规则，与 iOS 一致（GameSession.swift 的 suspend / resume）：
+    // 对局中离开即停表；回来时离开不超过 30 秒就接着玩，超过 30 秒本局直接结束，按实际玩的时长记录。
+    // 密码推理是不限时的推理题，只停表，离开多久都不结束。离开的时间一律不算进本局时长。
+    gameLifecycleRef.current = { isGameView, view, endGame };
+    useEffect(() => {
+        const handleVisibility = () => {
+            const { isGameView: inGame, view: currentView, endGame: finishRun } = gameLifecycleRef.current;
+            if (document.hidden) {
+                if (inGame && hiddenAtRef.current === null) hiddenAtRef.current = Date.now();
+                setIsAppHidden(true);
+                return;
+            }
+            setIsAppHidden(false);
+            const leftAt = hiddenAtRef.current;
+            hiddenAtRef.current = null;
+            if (leftAt === null || !inGame) return;
+            const away = Date.now() - leftAt;
+            awayMsRef.current += away;
+            if (currentView !== 'passwordlogic' && away > MAX_RESUMABLE_ABSENCE_MS) finishRun();
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
+
+    const isFirstPlayNudgeVisible = showFirstPlayNudge && view === 'home' && mode === 'normal' && (!showUpdateNote || urlParams.has('suppressUpdate'));
 
     // N-Back 首玩带教:当前是否处于"露出上一张卡 + 不扣分"的热身答题轮(前 3 题)
     const nbackAnswerableIndex = nback.roundNumber - (isChallengeDifficulty ? 2 : 1);
@@ -3450,7 +3550,7 @@ function App() {
                 </div>
             )}
 
-            {showFirstPlayNudge && view === 'home' && mode === 'normal' && (!showUpdateNote || urlParams.has('suppressUpdate')) && (
+            {isFirstPlayNudgeVisible && (
                 <div className="first-play-nudge fixed inset-0 z-[100] flex items-center justify-center p-5">
                     <div className="first-play-nudge-card" role="dialog" aria-modal="true">
                         <div className="first-play-nudge-icon"><Icon name="target" className="w-6 h-6" /></div>
@@ -3468,7 +3568,8 @@ function App() {
                 </div>
             )}
 
-            {(view === 'home' || view === 'analytics' || view === 'settings' || view === 'settings-daily') && (
+            {/* 规则弹窗或首玩引导出现时不显示 tab 栏，免得它从遮罩下露出来还能点（与 iOS 一致）。 */}
+            {(view === 'home' || view === 'analytics' || view === 'settings' || view === 'settings-daily') && !showInfo && !isFirstPlayNudgeVisible && (
                 <nav className="app-nav" aria-label="Primary navigation">
                     <div className="app-nav-brand">
                         <div className="app-nav-logo">
@@ -3501,22 +3602,29 @@ function App() {
 
             {view === 'home' && (
                 <div className={`home-screen app-content-screen p-6 pt-10 flex flex-col items-center h-full overflow-y-auto no-scrollbar relative ${mode === 'daily' ? 'is-daily-home' : mode === 'comp' ? 'is-arena-home' : 'is-training-home'}`}>
-                    <div className="home-mini-brand hidden w-full max-w-sm items-center gap-2 shrink-0">
-                        <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl shadow-md flex items-center justify-center shrink-0">
-                            <Icon name="brain-circuit" className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-sm font-black text-slate-800 leading-tight truncate">{ui.appTitle}</div>
-                            <div className="text-[8px] font-bold text-slate-400 brand-text leading-tight">Prefrontal Lab</div>
-                        </div>
-                    </div>
-                    <div className="home-header text-center mb-8 shrink-0">
-                        <div className="home-logo inline-flex items-center justify-center w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-xl"><Icon name="brain-circuit" /></div>
-                        <h1 className="home-title text-2xl font-black text-slate-800 mt-4 mb-0.5">{ui.appTitle}</h1>
-                        <div className="text-[10px] font-bold text-slate-400 brand-text">Prefrontal Lab</div>
-                    </div>
+                    {/* 首页不放 logo 标题栏，页面直接从顶部卡片开始，与 iOS 一致。 */}
 
-                    <div className={`score-card mode-score-card w-full max-w-sm p-6 rounded-[2.2rem] mb-6 flex justify-between items-end relative overflow-hidden shrink-0 ${mode === 'daily' ? 'daily-score-card' : `text-white ${mode === 'comp' ? 'is-arena bg-amber-500' : mode === 'infinite' ? 'is-infinite bg-sky-500' : 'is-train bg-indigo-600'}`}`}>
+                    {mode !== 'daily' && mode !== 'comp' ? (
+                        // 与 iOS 一致：训练页顶部是每日挑战卡，三档共用，整张可点，点了去每日挑战。
+                        <button
+                            type="button"
+                            onClick={() => goHomeMode('daily')}
+                            aria-label={`${trainingStreakState.eyebrow} ${trainingStreakState.figure}${trainingStreakState.unit ? ` ${trainingStreakState.unit}` : ''}. ${trainingStreakState.status}`}
+                            className={`score-card mode-score-card home-streak-card is-train bg-indigo-600 text-white w-full max-w-sm flex items-stretch relative overflow-hidden shrink-0 text-left ${dailyRecord.completed ? 'is-done' : ''}`}
+                        >
+                            <div className="home-streak-copy z-10">
+                                <div className="home-streak-eyebrow">{trainingStreakState.eyebrow}</div>
+                                <div className="home-streak-figure">
+                                    <span className="score-value">{trainingStreakState.figure}</span>
+                                    {trainingStreakState.unit && <span className="home-streak-unit">{trainingStreakState.unit}</span>}
+                                </div>
+                                <div className="home-streak-status">{trainingStreakState.status}</div>
+                            </div>
+                            <div className="home-streak-chevron z-10"><Icon name="chevron-right" className="w-4 h-4" /></div>
+                            <div className="score-watermark absolute top-[-20px] right-[-20px] opacity-10 rotate-12"><Icon name="brain" className="w-32 h-32" /></div>
+                        </button>
+                    ) : (
+                    <div className={`score-card mode-score-card w-full max-w-sm p-6 rounded-[2.2rem] mb-6 flex justify-between items-end relative overflow-hidden shrink-0 ${mode === 'daily' ? 'daily-score-card' : 'text-white is-arena bg-amber-500'}`}>
                         {mode === 'daily' ? (
                             <div className="daily-score-summary z-10 w-full">
                                 <div className="daily-best-block">
@@ -3534,21 +3642,14 @@ function App() {
                                 </div>
                             </div>
                         ) : (
-                            <>
-                                <div className="z-10">
-                                    <div className="text-[10px] opacity-60 font-bold uppercase tracking-widest">{mode === 'infinite' ? ui.infiniteScore : ui.bestSynced}</div>
-                                    <div className="score-value text-4xl font-black">{mode === 'comp' ? arenaBestScore : mode === 'infinite' ? '∞' : displayedBestScore}</div>
-                                </div>
-                                {/* 竞技场两档都开放，这个标签在这里从来没生效过，留着只会让人以为竞技受限。 */}
-                                {mode !== 'comp' && (
-                                    <div className="unlock-pill z-10 text-[10px] font-bold bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-md">
-                                        {mode === 'infinite' ? ui.infinitePill : history.isHardUnlocked ? "🔓 Advanced On" : "🔒 500 Unlock"}
-                                    </div>
-                                )}
-                            </>
+                            <div className="z-10">
+                                <div className="text-[10px] opacity-60 font-bold uppercase tracking-widest">{ui.bestSynced}</div>
+                                <div className="score-value text-4xl font-black">{arenaBestScore}</div>
+                            </div>
                         )}
                         <div className="score-watermark absolute top-[-20px] right-[-20px] opacity-10 rotate-12"><Icon name="brain" className="w-32 h-32" /></div>
                     </div>
+                    )}
 
                     {mode === 'comp' && (
                         <div className="mode-tabs flex w-full max-w-sm bg-slate-200 p-1 rounded-2xl mb-8 shrink-0">
@@ -3566,29 +3667,18 @@ function App() {
 
                     {mode !== 'daily' && mode !== 'comp' && (
                         <div className="mode-tabs flex w-full max-w-sm bg-slate-200 p-1 rounded-2xl mb-8 shrink-0">
-                            {['normal', 'hard', 'infinite'].map(m => {
-                                // 增加一个判定：如果是 hard 模式且没解锁，该按钮不可点（或者点不动）
-                                const isLocked = m === 'hard' && !history.isHardUnlocked;
-
-                                return (
-                                    <button
-                                        key={m}
-                                        onClick={() => {
-                                            if (isLocked) {
-                                                playSound('error');
-                                                return; // 拦截点击
-                                            }
-                                            playSound('tap');
-                                            setMode(m);
-                                        }}
-                                        className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all 
-                                    ${isLocked ? 'opacity-30 cursor-not-allowed' : ''} 
-                                    ${mode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                                    >
-                                        {m === 'normal' ? ui.normal : m === 'infinite' ? ui.infinite : (isLocked ? ui.hardLocked : ui.hard)}
-                                    </button>
-                                );
-                            })}
+                            {['normal', 'hard', 'infinite'].map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => {
+                                        playSound('tap');
+                                        setMode(m);
+                                    }}
+                                    className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all ${mode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                >
+                                    {m === 'normal' ? ui.normal : m === 'infinite' ? ui.infinite : ui.hard}
+                                </button>
+                            ))}
                         </div>
                     )}
 
@@ -3770,13 +3860,13 @@ function App() {
                             <div className="my-progress-card-head">
                                 <div>
                                     <span>{isEnglish ? 'Your rhythm so far' : '\u4f60\u7684\u8bad\u7ec3\u8282\u594f'}</span>
-                                    <strong>{isEnglish ? `${trainingRecords.completedDays} training days` : `${trainingRecords.completedDays} \u5929\u8bad\u7ec3`}</strong>
+                                    <strong>{isEnglish ? `${myWeekRecords.completedDays} training days` : `${myWeekRecords.completedDays} \u5929\u8bad\u7ec3`}</strong>
                                 </div>
                             </div>
                             <div className="my-progress-stats">
-                                <div><strong>{trainingRecords.completedDays}</strong><span>{isEnglish ? 'Days' : '\u8bad\u7ec3\u5929\u6570'}</span></div>
-                                <div><strong>{trainingRecords.totalSessions}</strong><span>{isEnglish ? 'Sessions' : '\u5b8c\u6210\u6b21\u6570'}</span></div>
-                                <div><strong>{trainingRecords.bestScore || '-'}</strong><span>{isEnglish ? 'Best score' : '\u6700\u9ad8\u5206'}</span></div>
+                                <div><strong>{myWeekRecords.completedDays}</strong><span>{isEnglish ? 'Days' : '\u8bad\u7ec3\u5929\u6570'}</span></div>
+                                <div><strong>{myWeekRecords.totalSessions}</strong><span>{isEnglish ? 'Sessions' : '\u5b8c\u6210\u6b21\u6570'}</span></div>
+                                <div><strong>{myWeekRecords.bestScore || '-'}</strong><span>{isEnglish ? 'Best score' : '\u6700\u9ad8\u5206'}</span></div>
                             </div>
                             <button
                                 type="button"
@@ -3791,46 +3881,7 @@ function App() {
                             </button>
                         </div>
 
-                        <div className="my-sync-note">
-                            <div className="my-sync-note-icon"><Icon name="cloud" className="w-4 h-4" /></div>
-                            <div className="settings-page-card-copy">
-                                <div className="settings-page-card-title">{settingsPageText.accountTitle}</div>
-                                <div className="settings-page-card-body">{settingsPageText.accountBody}</div>
-                            </div>
-                            <div className="settings-page-pill">{settingsPageText.accountCta}</div>
-                        </div>
-
-                        <div className="my-page-section-label">{isEnglish ? 'MORE' : '\u66f4\u591a\u529f\u80fd'}</div>
-
-                        <div className="settings-page-card settings-page-group settings-my-features my-feature-list">
-                            <div className="settings-page-group-row settings-page-row my-feature-row">
-                                <div className="settings-page-card-icon settings-leaderboard-icon">
-                                    <Icon name="trophy" className="w-5 h-5" />
-                                </div>
-                                <div className="settings-page-card-copy">
-                                    <div className="settings-page-card-title">{isEnglish ? 'Leaderboard' : '排行榜'}</div>
-                                    <div className="settings-page-card-body">{isEnglish ? 'Compare your best runs with the wider lab.' : '和实验室里的其他玩家比较最佳成绩。'}</div>
-                                </div>
-                                <div className="settings-page-pill">{ui.settingsSoon}</div>
-                            </div>
-
-                            <div className="settings-page-group-divider" />
-
-                                <div className="settings-page-group-row settings-page-row my-feature-row">
-                                    <div className="settings-page-card-icon settings-achievements-icon">
-                                        <svg className="achievement-badge-svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                                            <path d="M10 22.5 8.2 29l7.8-4.1L23.8 29 22 22.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                                            <circle cx="16" cy="14" r="9" stroke="currentColor" strokeWidth="2" />
-                                            <path d="m16 9.6 1.35 2.74 3.03.44-2.19 2.14.52 3.02L16 16.52l-2.71 1.42.52-3.02-2.19-2.14 3.03-.44L16 9.6Z" fill="currentColor" />
-                                        </svg>
-                                    </div>
-                                <div className="settings-page-card-copy">
-                                    <div className="settings-page-card-title">{isEnglish ? 'Badges & achievements' : '勋章与成就'}</div>
-                                    <div className="settings-page-card-body">{isEnglish ? 'Collect milestones as your training rhythm grows.' : '随着训练节奏成长，收集属于你的里程碑。'}</div>
-                                </div>
-                                <div className="settings-page-pill">{ui.settingsSoon}</div>
-                            </div>
-                        </div>
+                        {/* 「保存进度」「排行榜」「勋章」三个「即将开放」占位已去掉，与 iOS 一致：功能做出来之前不先许诺。 */}
 
                         <div className="my-page-section-label">{isEnglish ? 'PREFERENCES' : '偏好设置'}</div>
 
@@ -3904,16 +3955,6 @@ function App() {
                                 </button>
                             </div>
 
-                            <div className="settings-page-group-row settings-page-row">
-                                <div className="settings-page-card-icon">
-                                    <Icon name="hard-drive" className="w-5 h-5" />
-                                </div>
-                                <div className="settings-page-card-copy">
-                                    <div className="settings-page-card-title">{settingsPageText.dataTitle}</div>
-                                    <div className="settings-page-card-body">{settingsPageText.dataBody}</div>
-                                </div>
-                                <div className="settings-page-pill">{settingsPageText.localOnly}</div>
-                            </div>
                         </div>
 
                     </div>
@@ -4800,7 +4841,7 @@ function App() {
                                     currentRunRef.current = null;
                                 }
                                 setView('home');
-                            }} className="p-2 text-slate-400"><Icon name="chevron-left" /></button>
+                            }} className="game-back-button text-slate-900" aria-label={isEnglish ? 'Back' : '返回'}><Icon name="chevron-left" className="w-[18px] h-[18px]" /></button>
                         </div>
                         <div className="text-center">
                             <div className={`text-[9px] font-black brand-text ${mode === 'daily' ? 'text-emerald-500' : mode === 'infinite' ? 'text-sky-500' : 'text-indigo-500'}`}>{mode === 'comp' ? ui.arenaMode : mode === 'daily' ? ui.dailyTitle : mode === 'infinite' ? ui.infiniteMode : ui.training}</div>
@@ -5016,6 +5057,8 @@ function App() {
                                 {/* --- 新增：无惩罚刷新按钮 --- */}
                                 <button
                                     onClick={() => {
+                                        // 对错提示期间不响应，与 iOS 一致；原先答对后会被刷新两次。
+                                        if (answerFeedback) return;
                                         playSound('tap');
                                         initGameCore('setgame');
                                     }}
@@ -5074,6 +5117,8 @@ function App() {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => {
+                                                // 对错提示期间 −/+/清零都不响应，与 iOS 一致。
+                                                if (answerFeedback) return;
                                                 playSound('tap');
                                                 setNeuronCount(p => ({ ...p, currentCount: Math.max(0, p.currentCount - 1) }));
                                             }}
@@ -5087,6 +5132,7 @@ function App() {
                                         </div>
                                         <button
                                             onClick={() => {
+                                                if (answerFeedback) return;
                                                 playSound('tap');
                                                 setNeuronCount(p => ({ ...p, currentCount: p.currentCount + 1 }));
                                             }}
@@ -5099,6 +5145,7 @@ function App() {
                                     <div className="grid grid-cols-[1fr_2fr] gap-2 mt-2">
                                         <button
                                             onClick={() => {
+                                                if (answerFeedback) return;
                                                 playSound('tap');
                                                 setNeuronCount(p => ({ ...p, currentCount: 0 }));
                                             }}
@@ -5164,7 +5211,7 @@ function App() {
                                         {codeLogic.entry.map((digit, index) => (
                                             <button
                                                 key={index}
-                                                onClick={() => { playSound('tap'); setCodeLogic(p => ({ ...p, selected: index })); }}
+                                                onClick={() => { if (codeLogic.feedback) return; playSound('tap'); setCodeLogic(p => (p.feedback ? p : { ...p, selected: index })); }}
                                                 className={`${codeLength === 4 ? 'w-[52px]' : 'w-16'} h-[62px] rounded-2xl bg-white flex items-center justify-center text-3xl font-black font-mono transition-colors ${index === codeLogic.selected ? 'border-2 border-indigo-600' : 'border border-slate-200'} ${digit === null ? 'text-slate-300' : 'text-slate-800'}`}
                                             >{digit === null ? '–' : digit}</button>
                                         ))}
