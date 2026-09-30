@@ -2009,3 +2009,24 @@ html.theme-dark .schulte-cell.is-tap-pulsing.is-tap-error::after {
     background: rgba(248, 113, 113, 0.24);
     box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 0.3);
 }
+
+/* 新手教学：深色下的提示文案、交接画面和「重新开启全部教学」，取 iOS 调色板的深色值。 */
+html.theme-dark .tutorial-instruction,
+html.theme-dark .schulte-tutorial-pill,
+html.theme-dark .codelogic-tutorial-callout span,
+html.theme-dark .schulte-handoff-pill,
+html.theme-dark .tutorial-handoff-count,
+html.theme-dark .tutorial-replay-button { color: #818cf8; }
+html.theme-dark .schulte-tutorial-pill,
+html.theme-dark .schulte-handoff-pill,
+html.theme-dark .codelogic-handoff-card { background: #1e293b; border-color: #334155; }
+html.theme-dark .codelogic-tutorial-callout { background: #2a335c; border-color: rgba(129, 140, 248, 0.28); }
+html.theme-dark .codelogic-tutorial-callout button { color: #94a3b8; }
+html.theme-dark .is-code-tutorial-highlight { border-color: #818cf8 !important; }
+html.theme-dark .tutorial-handoff { background: rgba(15, 23, 42, 0.76); }
+html.theme-dark .tutorial-handoff.is-schulte { background: rgba(15, 23, 42, 0.5); }
+html.theme-dark .tutorial-handoff.is-codelogic { background: rgba(15, 23, 42, 0.88); }
+html.theme-dark .tutorial-handoff-title,
+html.theme-dark .codelogic-handoff-card { color: #f1f5f9; }
+html.theme-dark .tutorial-handoff-sub { color: #94a3b8; }
+html.theme-dark .tutorial-replay-button { background: #2a335c; border-color: #3a4184; }

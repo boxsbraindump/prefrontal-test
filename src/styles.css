@@ -5265,3 +5265,196 @@ body.is-app-scrollable .app-shell {
         min-height: 82px !important;
     }
 }
+
+/* ---- 新手教学（与 iOS 一致）---- */
+
+/* 引导目标：2px 靛蓝描边，向外让出 3px，带一圈淡光（iOS 的 strokeTutorial / shadowTutorial）。静止不闪。 */
+.is-tutorial-target {
+    outline: 2px solid #818cf8;
+    outline-offset: 3px;
+    box-shadow: 0 0 6px rgba(129, 140, 248, 0.3);
+}
+
+.tutorial-instruction {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+    color: #4f46e5;
+    max-width: 24rem;
+}
+
+.nback-tutorial-memory {
+    margin-top: 14px;
+}
+
+.neuron-tutorial-instruction {
+    font-size: 11px;
+    margin-bottom: 8px;
+}
+
+.schulte-tutorial-pill {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 100%;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #4f46e5;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.codelogic-tutorial-callout {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: 14px;
+    background: #eef2ff;
+    border: 1px solid rgba(79, 70, 229, 0.28);
+    text-align: left;
+}
+
+.codelogic-tutorial-callout span {
+    flex: 1;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #4f46e5;
+}
+
+.codelogic-tutorial-callout button {
+    flex-shrink: 0;
+    min-height: 32px;
+    font-size: 10px;
+    font-weight: 900;
+    color: #64748b;
+}
+
+.is-code-tutorial-highlight {
+    border: 3px solid #4f46e5 !important;
+}
+
+/* 教学结束到正式开局的交接画面，盖住整个游戏区，期间点不到下面的牌面。 */
+.tutorial-handoff {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 32px;
+    text-align: center;
+    background: rgba(248, 250, 252, 0.76);
+}
+
+.tutorial-handoff-title {
+    font-size: 21px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.tutorial-handoff-sub {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.tutorial-handoff-count {
+    margin-top: 10px;
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: #4f46e5;
+    animation: tutorial-count-pop 0.22s cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+@keyframes tutorial-count-pop {
+    from { opacity: 0; transform: scale(0.72); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.tutorial-handoff.is-schulte {
+    background: rgba(248, 250, 252, 0.5);
+    animation: tutorial-fade-in 0.16s ease-out both;
+}
+
+.tutorial-handoff.is-schulte.is-fading {
+    animation: tutorial-fade-out 0.16s ease-in both;
+}
+
+@keyframes tutorial-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes tutorial-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.schulte-handoff-pill {
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #4f46e5;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.tutorial-handoff.is-codelogic {
+    background: rgba(248, 250, 252, 0.88);
+    animation: tutorial-fade-in 0.18s ease-out both;
+}
+
+.codelogic-handoff-card {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 22px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+/* 「我的」页的「重新开启全部教学」，尺寸照 iOS：高 38、圆角 11、11px 粗体。 */
+.tutorial-replay-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 32px);
+    height: 38px;
+    margin: 0 16px 14px;
+    padding: 0 12px;
+    border-radius: 11px;
+    background: #eef2ff;
+    border: 1px solid #e0e7ff;
+    color: #4f46e5;
+    font-size: 11px;
+    font-weight: 900;
+    text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tutorial-handoff-count,
+    .tutorial-handoff.is-schulte,
+    .tutorial-handoff.is-codelogic {
+        animation: none;
+    }
+}

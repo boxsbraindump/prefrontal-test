@@ -361,6 +361,15 @@ const APPEARANCE_OPTIONS = ['system', 'light', 'dark'];
 const WEEKLY_DAILY_GOAL = 5;
 // 离开 App 超过这么久，限时对局就结束而不是接着玩（iOS GameSession.maximumResumableAbsence）。
 const MAX_RESUMABLE_ABSENCE_MS = 30000;
+// 训练里的新手教学，规则和存储键与 iOS 相同（PlayerProfile.swift 的 shouldShowTutorial / markTutorialCompleted）：
+// 总开关默认开；只在训练里触发，每日挑战和两档竞技都不触发；每个游戏做完一次就不再出现；
+// 密码推理只在基础档教。
+const TRAINING_TUTORIAL_TASKS = ['schulte', 'stroop', 'nback', 'setgame', 'neuroncount', 'passwordlogic'];
+const TUTORIAL_MODE_STORAGE_KEY = 'pfl_tutorial_mode_enabled';
+const TUTORIAL_DONE_STORAGE_KEY = 'pfl_completed_training_tutorials_v1';
+// 密码推理的固定教学题，与 iOS CodeLogicPuzzleEngine.tutorialPuzzle 相同：密码 178。
+const CODE_LOGIC_TUTORIAL = { secret: [1, 7, 8], guesses: [[1, 8, 9], [9, 2, 3], [8, 0, 6], [1, 7, 2]] };
+const EMPTY_NBACK_ROUND = { current: null, previous: null, isMatch: false, isReady: false, roundId: null, roundNumber: 0 };
 const CLOUD_ANALYTICS_ENDPOINT = window.PFL_ANALYTICS_ENDPOINT || (window.location.hostname === 'boxsbraindump.github.io' ? '' : '/api/retention');
 const GAME_CLICK_LABELS = {
     daily: 'Daily Challenge',
@@ -2568,8 +2577,6 @@ function App() {
     const [controlPulse, setControlPulse] = useState(null);
     const [controlPulseIsError, setControlPulseIsError] = useState(false);
     const nbackSeq = useRef([]);
-    const nbackWarmupRef = useRef(false);
-    const setgameWarmupRef = useRef(false);
     const feedbackTimer = useRef(null);
     const controlPulseTimer = useRef(null);
     const neuronMoveTimer = useRef(null);
@@ -2584,6 +2591,63 @@ function App() {
     const hiddenAtRef = useRef(null);
     const gameLifecycleRef = useRef({});
     const [isAppHidden, setIsAppHidden] = useState(false);
+
+    // ---- 新手教学 ----
+    const [tutorialModeEnabled, setTutorialModeEnabledState] = useState(() => {
+        try { return localStorage.getItem(TUTORIAL_MODE_STORAGE_KEY) !== 'false'; } catch (e) { return true; }
+    });
+    const [completedTutorials, setCompletedTutorials] = useState(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(TUTORIAL_DONE_STORAGE_KEY) || '[]');
+            return Array.isArray(stored) ? stored : [];
+        } catch (e) { return []; }
+    });
+    // 进行中的教学：{ task, correct, step }。回调里要同步读到最新值，所以另存一份在 ref 里。
+    const [tutorial, setTutorialState] = useState(null);
+    const tutorialRef = useRef(null);
+    const setTutorial = (next) => {
+        tutorialRef.current = next;
+        setTutorialState(next);
+    };
+    // 教学结束到正式开局之间的交接画面：{ kind: 'countdown' | 'schulte' | 'codelogic', stage }。
+    const [tutorialHandoff, setTutorialHandoff] = useState(null);
+    const tutorialTimers = useRef([]);
+    const clearTutorialTimers = () => {
+        tutorialTimers.current.forEach(clearTimeout);
+        tutorialTimers.current = [];
+    };
+    const updateCompletedTutorials = (update) => {
+        setCompletedTutorials(previous => {
+            const next = update(previous);
+            try { localStorage.setItem(TUTORIAL_DONE_STORAGE_KEY, JSON.stringify(next)); } catch (e) { }
+            return next;
+        });
+    };
+    const setTutorialModeEnabled = (enabled) => {
+        playSound('tap');
+        // 与 iOS 一致：重新打开总开关，等于要求再看一次密码推理的首玩说明，其余五个游戏的完成状态不动。
+        if (enabled && !tutorialModeEnabled) updateCompletedTutorials(list => list.filter(task => task !== 'passwordlogic'));
+        setTutorialModeEnabledState(enabled);
+        try { localStorage.setItem(TUTORIAL_MODE_STORAGE_KEY, enabled ? 'true' : 'false'); } catch (e) { }
+    };
+    // 「重新开启全部教学」只清完成记录，并确保总开关是开的；不开局，也不动分数和记录。
+    const replayAllTutorials = () => {
+        playSound('tap');
+        updateCompletedTutorials(() => []);
+        setTutorialModeEnabledState(true);
+        try { localStorage.setItem(TUTORIAL_MODE_STORAGE_KEY, 'true'); } catch (e) { }
+    };
+    const shouldShowTutorial = (task) => tutorialModeEnabled
+        && TRAINING_TUTORIAL_TASKS.includes(task)
+        && mode !== 'daily'
+        && mode !== 'comp'
+        && !completedTutorials.includes(task)
+        && (task !== 'passwordlogic' || mode === 'normal');
+    const cancelTutorial = () => {
+        clearTutorialTimers();
+        if (tutorialRef.current) setTutorial(null);
+        setTutorialHandoff(null);
+    };
     const soundEngineRef = useRef(null);
 
     if (!soundEngineRef.current) {
@@ -2722,8 +2786,9 @@ function App() {
         }, 180);
     };
 
-    const initGameCore = (type) => {
+    const initGameCore = (type, { excludeCodeSecret = null } = {}) => {
         const isHard = isChallengeDifficulty;
+        const tutorialTask = tutorialRef.current?.task;
         if (type === 'schulte') {
             const variant = currentRunRef.current?.dailyVariant;
             const cols = variant === 'grid6' ? 6 : 5;
@@ -2758,11 +2823,13 @@ function App() {
             });
         } else if (type === 'nback') {
             const level = isHard ? 2 : 1;
+            // 教学局左边那张卡是真正要比的那张：1-Back 是上一张，2-Back 是两张之前那张（iOS 相同）。
+            const comparisonTarget = nbackSeq.current.length >= level ? nbackSeq.current[nbackSeq.current.length - level] : null;
             const round = createNbackRound(nbackSeq.current, level);
             nbackSeq.current.push(round.current);
             setNback(previousRound => ({
                 ...round,
-                previous: previousRound.current,
+                previous: tutorialTask === 'nback' && comparisonTarget !== null ? comparisonTarget : previousRound.current,
                 roundId: `${Date.now()}-${nbackSeq.current.length}`,
                 roundNumber: nbackSeq.current.length
             }));
@@ -2783,9 +2850,8 @@ function App() {
             if (Object.values(logic).every(v => v === 0)) logic.shape = 1;
 
             // 首玩带教三板:①颜色全同(同色不同形) ②图形全同(同形不同色) ③全异(都不同)
-            if (setgameWarmupRef.current === 3) { logic.color = 0; logic.shape = 1; logic.fill = 0; }
-            else if (setgameWarmupRef.current === 2) { logic.color = 1; logic.shape = 0; logic.fill = 0; }
-            else if (setgameWarmupRef.current === 1) { logic.color = 1; logic.shape = 1; logic.fill = 0; }
+            // 教学板固定为「颜色相同、形状各不相同」（iOS 的 warmupStage 3）。
+            if (tutorialTask === 'setgame') { logic.color = 0; logic.shape = 1; logic.fill = 0; }
 
             // 1. 生成正确解 (3张)。进阶:三张共用一个随机透明度(实心或半透明);基础:恒为实心
             const solutionFill = isHard ? SET_FILL_LEVELS[Math.floor(Math.random() * SET_FILL_LEVELS.length)] : SET_FILL_LEVELS[0];
@@ -2820,8 +2886,10 @@ function App() {
             const targetShape = shapes[Math.floor(Math.random() * shapes.length)];
             const targetColor = colors[Math.floor(Math.random() * colors.length)];
 
-            const targetCount = isHard ? Math.floor(Math.random() * 6) + 7 : Math.floor(Math.random() * 4) + 4;
-            const distractorCount = isHard ? Math.floor(Math.random() * 12) + 12 : Math.floor(Math.random() * 8) + 6;
+            // 教学局只有 1 个目标和 5 个干扰项，也不移动（iOS 相同）。
+            const isNeuronTutorial = tutorialTask === 'neuroncount';
+            const targetCount = isNeuronTutorial ? 1 : isHard ? Math.floor(Math.random() * 6) + 7 : Math.floor(Math.random() * 4) + 4;
+            const distractorCount = isNeuronTutorial ? 5 : isHard ? Math.floor(Math.random() * 12) + 12 : Math.floor(Math.random() * 8) + 6;
 
             let items = [];
             for (let i = 0; i < targetCount; i++) {
@@ -2853,7 +2921,7 @@ function App() {
                 };
             }).sort(() => Math.random() - 0.5);
 
-            const moverCount = Math.min(isHard ? 3 : 0, items.length);
+            const moverCount = Math.min(isHard && !isNeuronTutorial ? 3 : 0, items.length);
             const moverIndexes = new Set(
                 [...items.keys()]
                     .sort(() => Math.random() - 0.5)
@@ -2874,7 +2942,9 @@ function App() {
         } else if (type === 'passwordlogic') {
             // 基础三位、进阶四位，无限沿用基础的三位——和 iOS 的分档一致。
             const codeLength = isChallengeDifficulty ? 4 : 3;
-            const puzzle = window.PFLGameLogic.codeLogic.generate(codeLength);
+            const puzzle = tutorialTask === 'passwordlogic'
+                ? window.PFLGameLogic.codeLogic.makePuzzle(CODE_LOGIC_TUTORIAL.secret, CODE_LOGIC_TUTORIAL.guesses)
+                : window.PFLGameLogic.codeLogic.generate(codeLength, excludeCodeSecret);
             if (codeFeedbackTimer.current) clearTimeout(codeFeedbackTimer.current);
             setCodeLogic({
                 puzzle,
@@ -2899,7 +2969,45 @@ function App() {
 
     // 任何提示显示期间（答对、答错 720ms、没填完 850ms）输入全部锁住，与 iOS 一致；
     // 原先只在答对时锁，答错提示还在就能再交一次，会连扣两次 10 分。
+    // 密码推理教学：只接受当前这一步引导的那个动作（点第几格 → 点哪个数字 → 提交），别的点击一律不响应（iOS 相同）。
+    const codeTutorialAllows = (action) => {
+        const current = tutorialRef.current;
+        if (current?.task !== 'passwordlogic') return true;
+        const step = current.step || {};
+        if (action.type === 'slot') return step.kind === 'slot' && action.index === step.slot;
+        if (action.type === 'digit') return step.kind === 'digit' && action.digit === step.digit;
+        if (action.type === 'submit') return step.kind === 'submit';
+        return false; // 教学里不能删除
+    };
+
+    const tapCodeSlot = (index) => {
+        if (codeLogic.feedback || !codeTutorialAllows({ type: 'slot', index })) return;
+        playSound('tap');
+        setCodeLogic(p => (p.feedback ? p : { ...p, selected: index }));
+        const current = tutorialRef.current;
+        if (current?.task === 'passwordlogic') {
+            setTutorial({ ...current, step: { kind: 'digit', slot: index, digit: CODE_LOGIC_TUTORIAL.secret[index] } });
+        }
+    };
+
+    const skipCodeTutorial = () => {
+        playSound('tap');
+        finishTutorial('passwordlogic');
+    };
+
     const enterCodeDigit = (digit) => {
+        const current = tutorialRef.current;
+        if (current?.task === 'passwordlogic') {
+            const step = current.step;
+            setCodeLogic(p => {
+                const entry = p.entry.slice();
+                entry[step.slot] = digit;
+                return { ...p, entry, selected: step.slot };
+            });
+            const nextSlot = step.slot + 1;
+            setTutorial({ ...current, step: nextSlot < CODE_LOGIC_TUTORIAL.secret.length ? { kind: 'slot', slot: nextSlot } : { kind: 'submit' } });
+            return;
+        }
         setCodeLogic(p => {
             if (!p.puzzle || p.feedback) return p;
             const entry = p.entry.slice();
@@ -2945,6 +3053,11 @@ function App() {
     const submitCodeLogic = () => {
         const { puzzle, entry } = codeLogic;
         if (!puzzle || codeLogic.feedback) return;
+        if (tutorialRef.current?.task === 'passwordlogic') {
+            playSound('success');
+            finishTutorial('passwordlogic');
+            return;
+        }
         if (entry.some(digit => digit === null)) {
             playSound('error');
             showCodeLogicFeedback('incomplete');
@@ -2987,43 +3100,18 @@ function App() {
     };
 
     const startChallenge = (type) => {
-        // 首玩引导:SET / N-Back 这类需要先懂规则的游戏,第一次玩先弹规则卡(竞技/每日不拦)。
-        // storage 不可用时默认放行,避免卡住开局。
-        if (type && (type === 'setgame' || type === 'nback') && mode !== 'comp' && mode !== 'daily') {
-            let rulesSeen = true;
-            try { rulesSeen = !!localStorage.getItem(`pfl_rules_seen_${type}`); } catch (e) { rulesSeen = true; }
-            if (!rulesSeen) {
-                playSound('tap');
-                setShowInfo(type);
-                return;
-            }
-        }
-        playSound('start');
+        // 原先第一次玩 SET / N-Back 会先拦下来弹规则卡，并各带一次性热身；现在由游戏内教学取代，与 iOS 一致。
         clearAnswerFeedback();
         setScore(0);
         nbackSeq.current = [];
         const activeDailySpec = getDailySpec();
         const taskType = mode === 'daily' ? activeDailySpec.task : type;
-        // N-Back 首玩带教:新手第一局基础 N-Back,前 3 个答题轮做脚手架(露出上一个数字 + 不扣分)。
-        // 一次性,标记后永不再触发;进阶/竞技/每日不带教。storage 不可用时默认不带教。
-        if (taskType === 'nback' && mode !== 'comp' && mode !== 'daily' && !isChallengeDifficulty) {
-            let warmupDone = true;
-            try { warmupDone = !!localStorage.getItem('pfl_nback_warmup_done'); } catch (e) { warmupDone = true; }
-            nbackWarmupRef.current = !warmupDone;
-            if (!warmupDone) { try { localStorage.setItem('pfl_nback_warmup_done', '1'); } catch (e) { } }
-        } else {
-            nbackWarmupRef.current = false;
-        }
-        // SET 首玩带教:新手第一局基础 SET,第一板给一个高亮的清晰范例 + 不扣分,解出后转正常。
-        if (taskType === 'setgame' && mode !== 'comp' && mode !== 'daily') {
-            const setKey = isChallengeDifficulty ? 'pfl_setgame_warmup_done_hard' : 'pfl_setgame_warmup_done';
-            let setDone = true;
-            try { setDone = !!localStorage.getItem(setKey); } catch (e) { setDone = true; }
-            setgameWarmupRef.current = setDone ? 0 : 3; // 3=颜色全同, 2=图形全同, 1=全异, 0=转正常
-            if (!setDone) { try { localStorage.setItem(setKey, '1'); } catch (e) { } }
-        } else {
-            setgameWarmupRef.current = 0;
-        }
+        cancelTutorial();
+        const runsTutorial = shouldShowTutorial(taskType);
+        // 必须在 initGameCore 之前定下来：教学局的牌面（Stroop 首题、SET 示范板、神经元 1+5、密码 178）由它生成。
+        if (runsTutorial) setTutorial({ task: taskType, correct: 0, step: taskType === 'passwordlogic' ? { kind: 'orientation' } : null });
+        // 教学局不播开局音，正式开局时才播（iOS 同样如此）。
+        if (!runsTutorial) playSound('start');
         const taskName = mode === 'comp' ? arenaTaskKey : mode === 'daily' ? 'daily' : taskType;
         runStatsRef.current = {
             task: mode === 'comp' ? arenaTaskKey : taskType,
@@ -3075,6 +3163,67 @@ function App() {
             initGameCore(taskType);
             setView(taskType);
         }
+        if (runsTutorial && taskType === 'stroop') {
+            // Stroop 教学第一题固定为蓝色的「红」字，与 iOS 相同。
+            const red = COLOR_LABELS.find(color => color.key === 'red');
+            const blue = COLOR_LABELS.find(color => color.key === 'blue');
+            setStroop({
+                roundId: `${Date.now()}-tutorial`,
+                textZh: red.zh,
+                textEn: red.en,
+                color: blue.val,
+                opts: [...COLOR_LABELS].sort(() => Math.random() - 0.5)
+            });
+        }
+        if (runsTutorial && taskType === 'passwordlogic') {
+            // 先留 1.35 秒让人读一下「四条线索要一起看」，再开始引导点第 1 格。
+            tutorialTimers.current.push(setTimeout(() => {
+                const current = tutorialRef.current;
+                if (current?.task === 'passwordlogic' && current.step?.kind === 'orientation') {
+                    setTutorial({ ...current, step: { kind: 'slot', slot: 0 } });
+                }
+            }, 1350));
+        }
+    };
+
+    // 教学最后一个动作做完：记为完成，换一盘新的，显示交接画面，交接结束才开始计时计分。
+    const startScoredSession = () => {
+        clearTutorialTimers();
+        setTutorialHandoff(null);
+        runStatsRef.current = { ...runStatsRef.current, attempts: 0, correct: 0, incorrect: 0, startedAtMs: Date.now() };
+        awayMsRef.current = 0;
+        hiddenAtRef.current = null;
+        playSound('start');
+    };
+
+    const finishTutorial = (task) => {
+        updateCompletedTutorials(list => (list.includes(task) ? list : [...list, task]));
+        clearTutorialTimers();
+        setTutorial(null);
+        clearAnswerFeedback();
+        setScore(0);
+        if (task === 'nback') {
+            nbackSeq.current = [];
+            setNback(EMPTY_NBACK_ROUND);
+        }
+        initGameCore(task, { excludeCodeSecret: task === 'passwordlogic' ? CODE_LOGIC_TUTORIAL.secret.join('') : null });
+        const kind = task === 'schulte' ? 'schulte' : task === 'passwordlogic' ? 'codelogic' : 'countdown';
+        setTutorialHandoff({ kind, stage: 'complete' });
+        const later = (ms, fn) => tutorialTimers.current.push(setTimeout(fn, ms));
+        if (kind === 'countdown') {
+            // iOS TutorialSessionHandoffOverlay：先停 340ms，再 3、2、1 各 420ms。
+            later(340, () => setTutorialHandoff({ kind, stage: 3 }));
+            later(760, () => setTutorialHandoff({ kind, stage: 2 }));
+            later(1180, () => setTutorialHandoff({ kind, stage: 1 }));
+            later(1600, startScoredSession);
+        } else if (kind === 'schulte') {
+            // 舒尔特不倒数：「从 1 开始」淡入 160ms、停 780ms、淡出 160ms，淡出完才开始计时。
+            later(940, () => setTutorialHandoff({ kind, stage: 'fading' }));
+            later(1100, startScoredSession);
+        } else {
+            // 密码推理：「现在开始正式推理」停 900ms。
+            later(900, startScoredSession);
+        }
     };
 
     const handleArenaError = ({ flash = true } = {}) => {
@@ -3104,6 +3253,17 @@ function App() {
             setSetGame(previous => ({ ...previous, selected: [], errorIds: [] }));
         }
         if (!shouldAdvance) return;
+        const activeTutorial = tutorialRef.current;
+        if (activeTutorial && activeTutorial.task === nextType) {
+            // Stroop 和 N-Back 要答对 3 题，SET 和神经元答对 1 次，教学就结束。
+            const correctCount = (activeTutorial.correct || 0) + 1;
+            const needed = (nextType === 'stroop' || nextType === 'nback') ? 3 : 1;
+            if (correctCount >= needed) {
+                finishTutorial(nextType);
+                return;
+            }
+            setTutorial({ ...activeTutorial, correct: correctCount });
+        }
         mode === 'comp' ? switchArenaTask() : initGameCore(nextType);
     };
 
@@ -3135,10 +3295,14 @@ function App() {
     const showAnswerFeedback = ({ correct, points = 0, penalty = 0, showPenalty = false, nextType, target, advance = true, event, position, flashError = true, duration }) => {
         if (answerLock.current) return;
         answerLock.current = true;
-        recordAttempt(correct);
+        // 教学局不计对错、不加分也不扣分，其余反馈照常。
+        const inTutorial = !!tutorialRef.current;
+        if (!inTutorial) recordAttempt(correct);
         playSound(correct ? 'success' : 'error');
 
-        if (correct) {
+        if (inTutorial) {
+            // 不改分
+        } else if (correct) {
             setScore(s => s + points);
         } else {
             if (penalty > 0) setScore(s => Math.max(0, s - penalty));
@@ -3156,19 +3320,19 @@ function App() {
             initGameCore('nback');
             return;
         }
-        const nbackAnswerable = nback.roundNumber - (isChallengeDifficulty ? 2 : 1);
-        const isWarmup = nbackWarmupRef.current && !isChallengeDifficulty && nbackAnswerable >= 1 && nbackAnswerable <= 3;
         const isCorrect = answerIsMatch === nback.isMatch;
+        // 教学局：答错停在原题重答（220ms），答对停 500ms 再进下一题；正式局对错都进下一题。
+        const inTutorial = tutorialRef.current?.task === 'nback';
         showAnswerFeedback({
             correct: isCorrect,
             points: 30,
-            penalty: isWarmup ? 0 : 10,
+            penalty: 10,
             nextType: 'nback',
             target: answerIsMatch ? 'match' : 'different',
-            advance: true,
+            advance: inTutorial ? isCorrect : true,
             event,
             flashError: false,
-            duration: 220
+            duration: inTutorial && isCorrect ? 500 : 220
         });
     };
 
@@ -3229,6 +3393,7 @@ function App() {
 
     const endGame = (finalScoreOverride) => {
         clearAnswerFeedback();
+        cancelTutorial();
         const currentFinalScore = typeof finalScoreOverride === 'number' ? finalScoreOverride : score;
         const isComp = mode === 'comp';
         const isDaily = mode === 'daily';
@@ -3354,12 +3519,13 @@ function App() {
         };
     }, []);
 
-    // 测试用:URL 带 ?newbie 时清掉新手引导记录,让规则卡/带教重新出现
+    // 测试用：URL 带 ?newbie 时清掉教学完成记录，六个游戏的教学重新出现。
     useEffect(() => {
         try {
             if (new URLSearchParams(window.location.search).has('newbie')) {
                 ['pfl_rules_seen_setgame', 'pfl_rules_seen_nback', 'pfl_nback_warmup_done', 'pfl_setgame_warmup_done', 'pfl_setgame_warmup_done_hard']
                     .forEach(k => localStorage.removeItem(k));
+                updateCompletedTutorials(() => []);
             }
         } catch (e) { }
     }, []);
@@ -3452,27 +3618,29 @@ function App() {
     // 密码推理不倒计时：它是一道推理题，玩到解出为止，顶栏显示的是已用时间。
     // timeLeft 保持 -1，所以下面那条倒计时 effect 的两个分支都不会命中。
     useEffect(() => {
-        if (view !== 'passwordlogic' || isAppHidden) return undefined;
+        if (view !== 'passwordlogic' || isAppHidden || tutorial || tutorialHandoff) return undefined;
         const timer = setInterval(() => {
             setCodeLogic(p => (p.feedback === 'correct' ? p : { ...p, elapsed: p.elapsed + 1 }));
         }, 1000);
         return () => clearInterval(timer);
-    }, [view, isAppHidden]);
+    }, [view, isAppHidden, tutorial, tutorialHandoff]);
 
     useEffect(() => {
         let timer;
-        if (isGameView && !isInfiniteMode && timeLeft > 0 && !isAppHidden) {
+        // 教学和交接画面期间不计时：正式开局前表一直停在满格。
+        if (isGameView && !isInfiniteMode && timeLeft > 0 && !isAppHidden && !tutorial && !tutorialHandoff) {
             timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
         } else if (timeLeft === 0 && isGameView && !isInfiniteMode) {
             endGame();
         }
         return () => clearInterval(timer);
-    }, [timeLeft, view, isInfiniteMode, isAppHidden]);
+    }, [timeLeft, view, isInfiniteMode, isAppHidden, tutorial, tutorialHandoff]);
 
     // 离开 App（切后台、锁屏、切标签页）时的规则，与 iOS 一致（GameSession.swift 的 suspend / resume）：
     // 对局中离开即停表；回来时离开不超过 30 秒就接着玩，超过 30 秒本局直接结束，按实际玩的时长记录。
     // 密码推理是不限时的推理题，只停表，离开多久都不结束。离开的时间一律不算进本局时长。
-    gameLifecycleRef.current = { isGameView, view, endGame };
+    // 教学期间表没在走，离开多久都不算，也不会因此结束（iOS 的 clockIsRunning）。
+    gameLifecycleRef.current = { isGameView: isGameView && !tutorial && !tutorialHandoff, view, endGame };
     useEffect(() => {
         const handleVisibility = () => {
             const { isGameView: inGame, view: currentView, endGame: finishRun } = gameLifecycleRef.current;
@@ -3495,10 +3663,13 @@ function App() {
 
     const isFirstPlayNudgeVisible = showFirstPlayNudge && view === 'home' && mode === 'normal' && (!showUpdateNote || urlParams.has('suppressUpdate'));
 
-    // N-Back 首玩带教:当前是否处于"露出上一张卡 + 不扣分"的热身答题轮(前 3 题)
-    const nbackAnswerableIndex = nback.roundNumber - (isChallengeDifficulty ? 2 : 1);
-    const isNbackWarmupRound = nbackWarmupRef.current && !isChallengeDifficulty && nback.isReady
-        && nbackAnswerableIndex >= 1 && nbackAnswerableIndex <= 3;
+    const tutorialTask = tutorial?.task || null;
+    const isNbackTutorialCompare = tutorialTask === 'nback' && nback.isReady && nback.previous !== null;
+    const neuronTutorialAction = tutorialTask !== 'neuroncount' ? null
+        : neuronCount.currentCount < neuronCount.targetCount ? 'increment'
+            : neuronCount.currentCount > neuronCount.targetCount ? 'decrement' : 'submit';
+    const codeTutorialStep = tutorialTask === 'passwordlogic' ? tutorial.step : null;
+    const isNbackWarmupRound = isNbackTutorialCompare;
 
     return (
         <div className={`app-shell h-full flex flex-col relative ${isGameView ? 'overflow-hidden' : 'overflow-y-auto'} transition-colors duration-200 ${isError ? 'arena-flash' : 'bg-slate-50'} text-slate-900 select-none`}>
@@ -3910,6 +4081,31 @@ function App() {
                                     ))}
                                 </div>
                             </div>
+
+                            <div className="settings-page-group-divider" />
+
+                            {/* 新手教学开关和「重新开启全部教学」，位置和文案照 iOS：语言之后、外观之前。 */}
+                            <div className="settings-page-group-row settings-page-row">
+                                <div className="settings-page-card-icon">
+                                    <Icon name="lightbulb" className="w-5 h-5" />
+                                </div>
+                                <div className="settings-page-card-copy">
+                                    <div className="settings-page-card-title">{isEnglish ? 'New Player Tutorials' : '新手教学'}</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setTutorialModeEnabled(!tutorialModeEnabled)}
+                                    className={`settings-sound-toggle is-page ${tutorialModeEnabled ? 'is-active' : ''}`}
+                                    aria-pressed={tutorialModeEnabled}
+                                    aria-label={isEnglish ? 'New Player Tutorials' : '新手教学'}
+                                >
+                                    {tutorialModeEnabled ? ui.settingsSoundOn : ui.settingsSoundOff}
+                                </button>
+                            </div>
+                            <button type="button" className="tutorial-replay-button" onClick={replayAllTutorials}>
+                                <Icon name="rotate-cw" className="w-[15px] h-[15px]" />
+                                <span>{isEnglish ? 'Replay all tutorials' : '重新开启全部教学'}</span>
+                            </button>
 
                             <div className="settings-page-group-divider" />
 
@@ -4808,7 +5004,7 @@ function App() {
                         <h2 className="text-xl font-black mb-1">{getTaskTitle(showInfo)}</h2>
                         <div className="text-[9px] font-bold text-slate-400 brand-text mb-6">{isEnglish ? ui.moduleLabel : TASK_DATA[showInfo].en}</div>
                         <div className="text-xs text-slate-600 leading-relaxed font-medium mb-8"><LatexFmt text={getTaskGuide(showInfo)} /></div>
-                        <button onClick={() => { const t = showInfo; try { localStorage.setItem(`pfl_rules_seen_${t}`, '1'); } catch (e) { } setShowInfo(null); startChallenge(t); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">{ui.startTraining}</button>
+                        <button onClick={() => { const t = showInfo; setShowInfo(null); startChallenge(t); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">{ui.startTraining}</button>
                     </div>
                 </div>
             )}
@@ -4820,6 +5016,13 @@ function App() {
                             <button onClick={() => {
                                 playSound('tap');
                                 clearAnswerFeedback();
+                                // 教学或交接中离开：直接回首页，不结算、不记录（教学没做完，下次还会出现）。
+                                if (tutorialRef.current || tutorialHandoff) {
+                                    cancelTutorial();
+                                    currentRunRef.current = null;
+                                    setView('home');
+                                    return;
+                                }
                                 if (mode === 'infinite') {
                                     endGame(score);
                                     return;
@@ -4854,12 +5057,20 @@ function App() {
                             )}
                         </div>
                         <div className="flex items-center justify-end gap-3">
-                            <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${isError ? 'bg-red-500 text-white' : 'bg-slate-100'}`}>{view === 'passwordlogic' ? `${ui.codeElapsed} ${codeLogic.elapsed}s` : mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
+                            <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${isError ? 'bg-red-500 text-white' : 'bg-slate-100'} ${codeTutorialStep ? 'invisible' : ''}`}>{view === 'passwordlogic' ? `${ui.codeElapsed} ${codeLogic.elapsed}s` : mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
                             <div className="font-mono text-xl font-black text-indigo-600">{score}</div>
                         </div>
                     </div>
                     <div className="game-stage flex-1 flex items-center justify-center p-6">
                         {view === 'schulte' && (
+                            <div className="relative w-full max-w-sm">
+                            {tutorialTask === 'schulte' && (schulte.index || 0) < 5 && (
+                                <div className="schulte-tutorial-pill">{
+                                    (schulte.index || 0) === 0
+                                        ? (isEnglish ? 'Tap the numbers in order from 1 to 25. Start with 1.' : '按 1 → 25 的顺序，依次点击数字。先从 1 开始')
+                                        : (isEnglish ? `Tap the numbers in order from 1 to 25. Next, find ${schulte.next}.` : `按 1 → 25 的顺序，依次点击数字。接着找到 ${schulte.next}`)
+                                }</div>
+                            )}
                             <div className={`grid gap-1.5 w-full max-w-sm aspect-square ${schulte.cols === 6 ? 'grid-cols-6' : 'grid-cols-5'}`}>
                                 {schulte.grid.map(n => {
                                     // 核心逻辑：判断当前格子的状态
@@ -4874,6 +5085,20 @@ function App() {
                                             key={n}
                                             onClick={() => {
                                                 const isCorrectClick = n === schulte.next;
+                                                if (tutorialTask === 'schulte') {
+                                                    // 教学：引导点前 5 个数字，不计分、不计时；点完第 5 个停 500ms，换一盘新的再交接（iOS 相同）。
+                                                    if ((schulte.index || 0) >= 5) return;
+                                                    pulseControl(`schulte-${n}`, !isCorrectClick);
+                                                    playSound(isCorrectClick ? 'success' : 'error');
+                                                    if (!isCorrectClick) {
+                                                        handleArenaError();
+                                                        return;
+                                                    }
+                                                    const nextIndex = (schulte.index || 0) + 1;
+                                                    setSchulte(p => ({ ...p, index: nextIndex, next: (p.sequence || [])[nextIndex] }));
+                                                    if (nextIndex >= 5) tutorialTimers.current.push(setTimeout(() => finishTutorial('schulte'), 500));
+                                                    return;
+                                                }
                                                 pulseControl(`schulte-${n}`, !isCorrectClick);
                                                 recordAttempt(isCorrectClick);
                                                 playSound(isCorrectClick ? 'success' : 'error');
@@ -4895,7 +5120,7 @@ function App() {
                                                     handleArenaError(); // 点错了闪红光
                                                 }
                                             }}
-                                            className={`schulte-cell flex items-center justify-center font-bold ${schulte.cols === 6 ? 'text-sm' : 'text-lg'} rounded-lg border transition-all ${controlPulse === `schulte-${n}` ? `is-tap-pulsing ${controlPulseIsError ? 'is-tap-error' : ''}` : ''}
+                                            className={`schulte-cell flex items-center justify-center font-bold ${schulte.cols === 6 ? 'text-sm' : 'text-lg'} rounded-lg border transition-all ${tutorialTask === 'schulte' && n === schulte.next && (schulte.index || 0) < 5 ? 'is-tutorial-target' : ''} ${controlPulse === `schulte-${n}` ? `is-tap-pulsing ${controlPulseIsError ? 'is-tap-error' : ''}` : ''}
     ${(isClicked && (mode === 'hard' || mode === 'daily')) // 竞技不使用盲点，Daily 使用进阶变体
                                                     ? 'bg-white text-slate-900 border-slate-100 shadow-sm' // 只有进阶模式是“盲点”
                                                     : (isClicked
@@ -4909,9 +5134,15 @@ function App() {
                                     );
                                 })}
                             </div>
+                            </div>
                         )}
                         {view === 'stroop' && (
                             <div className="flex flex-col items-center space-y-12 w-full">
+                                {tutorialTask === 'stroop' && (
+                                    <div className="tutorial-instruction">{isEnglish
+                                        ? `Tutorial ${(tutorial.correct || 0) + 1}/3: Ignore the word. Choose the answer matching the word’s ink color.`
+                                        : `教学 ${(tutorial.correct || 0) + 1}/3：忽略文字含义，选择文字填充颜色对应的答案。`}</div>
+                                )}
                                 <div className="text-7xl font-black" style={{ color: stroop.color }}>{isEnglish ? stroop.textEn : stroop.textZh}</div>
                                 <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                                     {stroop.opts.map(o => (
@@ -4925,9 +5156,11 @@ function App() {
                                                 target: o.val,
                                                 advance: isCorrect,
                                                 event,
-                                                flashError: false
+                                                flashError: false,
+                                                // 教学局答对多停一会儿（500ms），让人看清对在哪
+                                                duration: tutorialTask === 'stroop' && isCorrect ? 500 : undefined
                                             });
-                                        }} className={`stroop-choice-button ${controlPulse === `stroop-${o.val}` ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{(mode === 'normal' || mode === 'infinite') ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
+                                        }} className={`stroop-choice-button ${tutorialTask === 'stroop' && !answerFeedback && o.val === stroop.color ? 'is-tutorial-target' : ''} ${controlPulse === `stroop-${o.val}` ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{(mode === 'normal' || mode === 'infinite') ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
                                     ))}
                                 </div>
                             </div>
@@ -4954,8 +5187,15 @@ function App() {
                                             {nback.current}
                                         </div>
                                     </div>
+                                    {tutorialTask === 'nback' && !nback.isReady && (
+                                        <div className="tutorial-instruction nback-tutorial-memory">{isChallengeDifficulty
+                                            ? (isEnglish ? 'Tutorial: remember this number; you will compare it with the number two cards back.' : '教学：先记住这张数字；稍后会和两张之前的数字比较。')
+                                            : (isEnglish ? 'Tutorial: remember this number; you will compare it with the previous card.' : '教学：先记住这张数字；稍后会和上一张数字比较。')}</div>
+                                    )}
                                     {isNbackWarmupRound && (
-                                        <div className="nback-warmup-hint">{isEnglish ? 'Same as the card on the left?' : '右边这个，和左边那个一样吗？'}</div>
+                                        <div className="nback-warmup-hint">{`${isEnglish ? 'Tutorial' : '教学'} ${(tutorial.correct || 0) + 1}/3${isEnglish ? ': ' : '：'}${isChallengeDifficulty
+                                            ? (isEnglish ? 'Compare the current number with the number two cards back: same is Match, different is Different.' : '把当前数字和两张之前的数字比较：相同选「匹配」，不同选「不同」。')
+                                            : (isEnglish ? 'Compare the current number with the previous number: same is Match, different is Different.' : '把当前数字和上一张数字比较：相同选「匹配」，不同选「不同」。')}`}</div>
                                     )}
                                 </div>
                                 {nback.isReady ? (
@@ -4963,11 +5203,11 @@ function App() {
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-match');
                                             handleNbackAnswer(true, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-different');
                                             handleNbackAnswer(false, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && !nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
                                     </div>
                                 ) : (
                                     <button disabled={!!answerFeedback} onClick={() => {
@@ -4978,16 +5218,10 @@ function App() {
                         )}
                         {view === 'setgame' && (
                             <div className="setgame-layout flex flex-col items-center w-full animate-pop-center">
-                                {setgameWarmupRef.current > 0 && (
-                                    <div className="set-warmup-hint">{
-                                        (setgameWarmupRef.current === 3
-                                            ? (isEnglish ? 'Example 1 of 3 — same color, different shapes' : '示例 1/3:颜色相同、形状全不同')
-                                            : setgameWarmupRef.current === 2
-                                                ? (isEnglish ? 'Example 2 of 3 — same shape, different colors' : '示例 2/3:形状相同、颜色全不同')
-                                                : (isEnglish ? 'Example 3 of 3 — all different' : '示例 3/3:颜色、形状全都不同'))
-                                        + (isChallengeDifficulty ? (isEnglish ? ', same opacity' : '、透明度一致') : '')
-                                        + (isEnglish ? ' — still a set' : ' —— 也是一组')
-                                    }</div>
+                                {tutorialTask === 'setgame' && (
+                                    <div className="set-warmup-hint">{isEnglish
+                                        ? `Tutorial: find three cards. For ${isChallengeDifficulty ? 'color, shape, and fill level' : 'color and shape'}, each property must be all the same or all different.`
+                                        : `教学：找出三个图形：${isChallengeDifficulty ? '颜色、形状和填充度' : '颜色和形状'}每一种属性都必须完全相同，或完全不同。`}</div>
                                 )}
                                 {/* --- 游戏网格 --- */}
                                 <div className="setgame-grid grid grid-cols-3 gap-2 w-full max-w-sm">
@@ -5010,7 +5244,6 @@ function App() {
                                                     const isFillMatch = checkProp(selectedCards[0].fillLevel, selectedCards[1].fillLevel, selectedCards[2].fillLevel);
 
                                                     if (isColorMatch && isShapeMatch && isFillMatch) {
-                                                        if (setgameWarmupRef.current > 0) setgameWarmupRef.current -= 1; // 解出一板,推进带教(2→1→0)
                                                         setSetGame(p => ({ ...p, selected: newSel, successIds: newSel }));
                                                         showAnswerFeedback({
                                                             correct: true,
@@ -5025,8 +5258,8 @@ function App() {
                                                         setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: newSel }));
                                                         showAnswerFeedback({
                                                             correct: false,
-                                                            penalty: setgameWarmupRef.current ? 0 : 20,
-                                                            showPenalty: !setgameWarmupRef.current,
+                                                            penalty: 20,
+                                                            showPenalty: tutorialTask !== 'setgame',
                                                             nextType: 'setgame',
                                                             target: `set-${card.id}`,
                                                             advance: false,
@@ -5038,7 +5271,7 @@ function App() {
                                                     setSetGame(p => ({ ...p, selected: newSel, successIds: [], errorIds: [] }));
                                                 }
                                             }}
-                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${controlPulse === `set-${card.id}` ? 'is-tap-pulsing' : ''} ${setgameWarmupRef.current > 0 && card.isSolution ? 'is-set-hint' : ''} ${setGame.successIds?.includes(card.id)
+                                            className={`set-card-button relative overflow-hidden aspect-square rounded-3xl border-2 flex items-center justify-center transition-all duration-200 disabled:pointer-events-none ${controlPulse === `set-${card.id}` ? 'is-tap-pulsing' : ''} ${tutorialTask === 'setgame' && card.isSolution && !answerFeedback ? 'is-tutorial-target' : ''} ${setGame.successIds?.includes(card.id)
                                                 ? 'is-set-success'
                                                 : setGame.errorIds?.includes(card.id)
                                                     ? 'is-set-wrong'
@@ -5072,7 +5305,16 @@ function App() {
                         )}
                         {view === 'neuroncount' && (
                             <div className="neuron-layout flex flex-col items-center w-full animate-pop-center min-h-0">
-                                <div className="neuron-target flex-shrink-0 w-full max-w-sm mb-3 bg-white px-4 py-3 rounded-[1.5rem] border border-indigo-100 shadow-sm flex items-center justify-between gap-3">
+                                {neuronTutorialAction && (
+                                    <div className="tutorial-instruction neuron-tutorial-instruction">{
+                                        neuronTutorialAction === 'increment'
+                                            ? (isEnglish ? 'Tutorial: the target is highlighted; use the highlighted + control.' : '教学：目标已高亮，点击高亮的 + 记录数量')
+                                            : neuronTutorialAction === 'decrement'
+                                                ? (isEnglish ? 'Tutorial: the count is high; use the highlighted − control.' : '教学：数量多了，点击高亮的 − 调整')
+                                                : (isEnglish ? 'Tutorial: the count is correct; submit with the highlighted control.' : '教学：数量正确，点击高亮的确认提交')
+                                    }</div>
+                                )}
+                                <div className={`neuron-target flex-shrink-0 w-full max-w-sm mb-3 bg-white px-4 py-3 rounded-[1.5rem] border border-indigo-100 shadow-sm flex items-center justify-between gap-3 ${neuronTutorialAction ? 'is-tutorial-target' : ''}`}>
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                                             <Icon name="scan-search" className="w-5 h-5" />
@@ -5122,7 +5364,7 @@ function App() {
                                                 playSound('tap');
                                                 setNeuronCount(p => ({ ...p, currentCount: Math.max(0, p.currentCount - 1) }));
                                             }}
-                                            className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl font-bold border border-indigo-100 active:scale-95 transition-transform flex items-center justify-center"
+                                            className={`w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl font-bold border border-indigo-100 active:scale-95 transition-transform flex items-center justify-center ${neuronTutorialAction === 'decrement' ? 'is-tutorial-target' : ''}`}
                                         >
                                             <Icon name="minus" className="w-5 h-5" />
                                         </button>
@@ -5136,7 +5378,7 @@ function App() {
                                                 playSound('tap');
                                                 setNeuronCount(p => ({ ...p, currentCount: p.currentCount + 1 }));
                                             }}
-                                            className="w-14 h-14 bg-indigo-600 text-white rounded-2xl font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center"
+                                            className={`w-14 h-14 bg-indigo-600 text-white rounded-2xl font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center ${neuronTutorialAction === 'increment' ? 'is-tutorial-target' : ''}`}
                                         >
                                             <Icon name="plus" className="w-6 h-6" />
                                         </button>
@@ -5164,13 +5406,14 @@ function App() {
                                                     target: 'neuron-submit',
                                                     advance: isCorrect,
                                                     event,
-                                                    flashError: false
+                                                    flashError: false,
+                                                    duration: neuronTutorialAction && isCorrect ? 500 : undefined
                                                 });
                                                 if (!isCorrect) {
                                                     setNeuronCount(p => ({ ...p, currentCount: 0 }));
                                                 }
                                             }}
-                                            className="h-11 bg-slate-900 text-white rounded-[1.1rem] font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 text-sm"
+                                            className={`h-11 bg-slate-900 text-white rounded-[1.1rem] font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 text-sm ${neuronTutorialAction === 'submit' ? 'is-tutorial-target' : ''}`}
                                         >
                                             <Icon name="check" className="w-5 h-5" /> {ui.submit}
                                         </button>
@@ -5193,11 +5436,16 @@ function App() {
                                             tone: 'bg-emerald-500'
                                         }
                                         : null;
-                            const keypadButton = (label, onClick, { primary = false, wide = false } = {}) => (
+                            const keypadButton = (label, onClick, { primary = false, wide = false, action = null, highlighted = false } = {}) => (
                                 <button
                                     key={label}
-                                    onClick={() => { playSound('tap'); onClick(); }}
-                                    className={`h-12 rounded-2xl font-black active:scale-95 transition-transform flex items-center justify-center ${wide ? 'text-xs' : 'text-xl font-mono'} ${primary ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-800 border border-slate-200'}`}
+                                    onClick={() => {
+                                        if (action && !codeTutorialAllows(action)) return;
+                                        // 教学里提交只播答对音，不叠点击音（iOS 相同）
+                                        if (!(action?.type === 'submit' && codeTutorialStep)) playSound('tap');
+                                        onClick();
+                                    }}
+                                    className={`h-12 rounded-2xl font-black active:scale-95 transition-transform flex items-center justify-center ${wide ? 'text-xs' : 'text-xl font-mono'} ${primary ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-800 border border-slate-200'} ${highlighted ? 'is-code-tutorial-highlight' : ''}`}
                                 >{label}</button>
                             );
                             return (
@@ -5207,12 +5455,29 @@ function App() {
                                         <div className="text-[10px] font-bold text-slate-400 mt-0.5 leading-snug px-2">{codeLength === 4 ? ui.codeSubtitle4 : ui.codeSubtitle3}</div>
                                     </div>
 
+                                    {codeTutorialStep && (
+                                        <div className="codelogic-tutorial-callout">
+                                            <span>{
+                                                codeTutorialStep.kind === 'orientation'
+                                                    ? (isEnglish ? 'Read all four clues together. Each puzzle has one unique answer.' : '四条线索要一起看，每题只有一个唯一答案。')
+                                                    : codeTutorialStep.kind === 'slot'
+                                                        ? (codeTutorialStep.slot === 0
+                                                            ? (isEnglish ? 'Fill a position once you know it. First, tap slot 1.' : '可以先填写你已经确定的位置。先点击第 1 格。')
+                                                            : (isEnglish ? `Now tap slot ${codeTutorialStep.slot + 1}.` : `现在点击第 ${codeTutorialStep.slot + 1} 格。`))
+                                                        : codeTutorialStep.kind === 'digit'
+                                                            ? (isEnglish ? `Digit ${codeTutorialStep.slot + 1} is ${codeTutorialStep.digit}. Tap ${codeTutorialStep.digit}.` : `第 ${codeTutorialStep.slot + 1} 位已经确定为 ${codeTutorialStep.digit}，点击数字 ${codeTutorialStep.digit}。`)
+                                                            : (isEnglish ? 'The code is complete. Tap Submit.' : '密码已填好，点击提交。')
+                                            }</span>
+                                            <button type="button" onClick={skipCodeTutorial} aria-label={isEnglish ? 'Skip Code Logic tutorial' : '跳过密码推理教学'}>{isEnglish ? 'Skip tutorial' : '跳过教学'}</button>
+                                        </div>
+                                    )}
+
                                     <div className="flex-shrink-0 flex justify-center gap-2.5 mt-3">
                                         {codeLogic.entry.map((digit, index) => (
                                             <button
                                                 key={index}
-                                                onClick={() => { if (codeLogic.feedback) return; playSound('tap'); setCodeLogic(p => (p.feedback ? p : { ...p, selected: index })); }}
-                                                className={`${codeLength === 4 ? 'w-[52px]' : 'w-16'} h-[62px] rounded-2xl bg-white flex items-center justify-center text-3xl font-black font-mono transition-colors ${index === codeLogic.selected ? 'border-2 border-indigo-600' : 'border border-slate-200'} ${digit === null ? 'text-slate-300' : 'text-slate-800'}`}
+                                                onClick={() => tapCodeSlot(index)}
+                                                className={`${codeLength === 4 ? 'w-[52px]' : 'w-16'} h-[62px] rounded-2xl bg-white flex items-center justify-center text-3xl font-black font-mono transition-colors ${codeTutorialStep?.kind === 'slot' && codeTutorialStep.slot === index ? 'is-code-tutorial-highlight' : index === codeLogic.selected ? 'border-2 border-indigo-600' : 'border border-slate-200'} ${digit === null ? 'text-slate-300' : 'text-slate-800'}`}
                                             >{digit === null ? '–' : digit}</button>
                                         ))}
                                     </div>
@@ -5237,19 +5502,38 @@ function App() {
                                     <div className="flex-shrink-0 mt-2 space-y-1.5">
                                         {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((row, rowIndex) => (
                                             <div key={rowIndex} className="grid grid-cols-3 gap-1.5">
-                                                {row.map(digit => keypadButton(String(digit), () => enterCodeDigit(digit)))}
+                                                {row.map(digit => keypadButton(String(digit), () => enterCodeDigit(digit), { action: { type: 'digit', digit }, highlighted: codeTutorialStep?.kind === 'digit' && codeTutorialStep.digit === digit }))}
                                             </div>
                                         ))}
                                         <div className="grid grid-cols-3 gap-1.5">
-                                            {keypadButton(ui.codeDelete, deleteCodeDigit, { wide: true })}
-                                            {keypadButton('0', () => enterCodeDigit(0))}
-                                            {keypadButton(ui.codeSubmit, submitCodeLogic, { primary: true, wide: true })}
+                                            {keypadButton(ui.codeDelete, deleteCodeDigit, { wide: true, action: { type: 'delete' } })}
+                                            {keypadButton('0', () => enterCodeDigit(0), { action: { type: 'digit', digit: 0 }, highlighted: codeTutorialStep?.kind === 'digit' && codeTutorialStep.digit === 0 })}
+                                            {keypadButton(ui.codeSubmit, submitCodeLogic, { primary: true, wide: true, action: { type: 'submit' }, highlighted: codeTutorialStep?.kind === 'submit' })}
                                         </div>
                                     </div>
                                 </div>
                             );
                         })()}
                     </div>
+                    {tutorialHandoff?.kind === 'countdown' && (
+                        <div className="tutorial-handoff" role="status" aria-label={isEnglish ? 'Tutorial complete. Now it’s your turn' : '教学完成。现在，轮到你了'}>
+                            <div className="tutorial-handoff-title">{isEnglish ? 'Tutorial complete' : '教学完成'}</div>
+                            <div className="tutorial-handoff-sub">{isEnglish ? 'Now it’s your turn' : '现在，轮到你了'}</div>
+                            {typeof tutorialHandoff.stage === 'number' && (
+                                <div key={tutorialHandoff.stage} className="tutorial-handoff-count">{tutorialHandoff.stage}</div>
+                            )}
+                        </div>
+                    )}
+                    {tutorialHandoff?.kind === 'schulte' && (
+                        <div className={`tutorial-handoff is-schulte ${tutorialHandoff.stage === 'fading' ? 'is-fading' : ''}`} role="status">
+                            <div className="schulte-handoff-pill">{isEnglish ? 'Start from 1' : '从 1 开始'}</div>
+                        </div>
+                    )}
+                    {tutorialHandoff?.kind === 'codelogic' && (
+                        <div className="tutorial-handoff is-codelogic" role="status">
+                            <div className="codelogic-handoff-card">{isEnglish ? 'Now begin the real puzzle' : '现在开始正式推理'}</div>
+                        </div>
+                    )}
                 </div>
             )}
 
