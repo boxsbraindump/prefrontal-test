@@ -1,1 +1,723 @@
 /* 安卓与 iOS 对齐第四批：daily 区域的样式（深色覆盖也写在本文件，用 html.theme-dark 前缀）。见外层仓库 docs/ANDROID_PARITY.md。 */
+/* 数值取自 iOS 1.0.2（a43b5fe）的 DailyChallengeFlow.swift、RootView.swift 和 Palette.swift。 */
+
+/* ===== 第 40 项：每日挑战开始前的规则卡（DailyChallengeFlow.swift:17-182） ===== */
+
+/* 全屏一层，盖过 tab 栏（.app-nav 是 z-index 60），背景是 surfaceSunken 而不是半透明遮罩 */
+.daily-gate-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top, 0px) 24px env(safe-area-inset-bottom, 0px);
+    overflow-y: auto;
+    background: #f1f5f9;
+}
+
+.daily-gate-card {
+    width: 100%;
+    max-width: 360px;
+    margin: 24px 0;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 45px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    animation: daily-gate-in 180ms ease-out both;
+}
+
+@keyframes daily-gate-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.daily-gate-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.daily-gate-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.daily-gate-kicker {
+    margin: 1px 0 20px;
+    color: #059669;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+}
+
+.daily-gate-rule {
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.daily-gate-demo {
+    height: 128px;
+    margin: 16px 0;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+}
+
+.daily-gate-tip {
+    margin: 0 0 24px;
+    padding: 12px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.45;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.13);
+    border-radius: 16px;
+}
+
+.daily-gate-start {
+    width: 100%;
+    height: 52px;
+    border: 0;
+    border-radius: 16px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    touch-action: manipulation;
+}
+
+.daily-gate-later {
+    width: 100%;
+    padding-top: 16px;
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+    touch-action: manipulation;
+}
+
+.daily-gate-start:active,
+.daily-gate-later:active {
+    transform: scale(0.98);
+}
+
+/* —— 示意图 —— */
+.daily-gate-demo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.daily-gate-demo-row.is-nback {
+    gap: 10px;
+}
+
+.daily-gate-demo-row.is-neuron {
+    gap: 12px;
+}
+
+.daily-gate-schulte-cell {
+    width: 42px;
+    height: 42px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #94a3b8;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.daily-gate-schulte-cell.is-target {
+    border: 2px solid #4f46e5;
+    background: rgba(79, 70, 229, 0.1);
+    color: #4f46e5;
+}
+
+.daily-gate-arrow {
+    width: 15px;
+    height: 12px;
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.daily-gate-stroop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.daily-gate-stroop-word {
+    color: #3b82f6;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.daily-gate-color-choice {
+    height: 30px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.daily-gate-color-choice.is-red { background: #ef4444; }
+.daily-gate-color-choice.is-blue { background: #3b82f6; }
+
+/* 选中的那枚：内缩 2px 的白色描边 */
+.daily-gate-color-choice.is-selected {
+    box-shadow: inset 0 0 0 2px #3b82f6, inset 0 0 0 4px #ffffff;
+}
+
+.daily-gate-nback-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.45;
+}
+
+.daily-gate-nback-card.is-active {
+    opacity: 1;
+}
+
+.daily-gate-nback-card span {
+    width: 42px;
+    height: 42px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #cbd5e1;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.daily-gate-nback-card.is-active span {
+    border: 1px solid #4f46e5;
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+.daily-gate-nback-card small {
+    color: #94a3b8;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.daily-gate-nback-card.is-active small {
+    color: #4f46e5;
+}
+
+.daily-gate-set-card {
+    width: 58px;
+    height: 54px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.daily-gate-set-card i {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+}
+
+.daily-gate-neuron-target {
+    width: 48px;
+    height: 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-radius: 12px;
+    background: #fffbeb;
+}
+
+.daily-gate-neuron-target i {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #f59e0b;
+}
+
+.daily-gate-neuron-target small {
+    color: #b45309;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.daily-gate-neuron-field {
+    height: 58px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.daily-gate-neuron-field i {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #f59e0b;
+}
+
+.daily-gate-neuron-field b {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background: #cbd5e1;
+}
+
+.daily-gate-neuron-answer {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #4f46e5;
+    color: #ffffff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+html.theme-dark .daily-gate-screen { background: #172033; }
+html.theme-dark .daily-gate-card {
+    background: #1e293b;
+    border-color: #475569;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+html.theme-dark .daily-gate-icon { background: #1c4046; }
+html.theme-dark .daily-gate-title { color: #f1f5f9; }
+html.theme-dark .daily-gate-kicker { color: #34d399; }
+html.theme-dark .daily-gate-rule,
+html.theme-dark .daily-gate-tip { color: #94a3b8; }
+html.theme-dark .daily-gate-demo { background: #0f172a; border-color: #334155; }
+html.theme-dark .daily-gate-start { background: #f1f5f9; color: #0f172a; }
+html.theme-dark .daily-gate-later { color: #64748b; }
+html.theme-dark .daily-gate-schulte-cell { background: #1e293b; border-color: #334155; color: #64748b; }
+html.theme-dark .daily-gate-schulte-cell.is-target { border-color: #818cf8; background: rgba(99, 102, 241, 0.1); color: #818cf8; }
+html.theme-dark .daily-gate-arrow { stroke: #64748b; }
+html.theme-dark .daily-gate-nback-card span { background: #1e293b; border-color: #475569; color: #f1f5f9; }
+html.theme-dark .daily-gate-nback-card.is-active span { background: #6366f1; border-color: #818cf8; color: #ffffff; }
+html.theme-dark .daily-gate-nback-card small { color: #64748b; }
+html.theme-dark .daily-gate-nback-card.is-active small { color: #818cf8; }
+html.theme-dark .daily-gate-set-card { background: #1e293b; border-color: #475569; }
+html.theme-dark .daily-gate-neuron-target { background: #3c3934; }
+html.theme-dark .daily-gate-neuron-target small { color: #fbbf24; }
+html.theme-dark .daily-gate-neuron-field { background: #1e293b; border-color: #334155; }
+html.theme-dark .daily-gate-neuron-field b { background: #475569; }
+html.theme-dark .daily-gate-neuron-answer { background: #6366f1; }
+
+/* ===== 第 41 项：每日结算 ===== */
+
+.daily-result-mark {
+    width: 40px;
+    height: 40px;
+}
+
+/* 底部说明：一行绿字，不带图标（DailyChallengeFlow.swift:445-448） */
+.daily-result-note.is-parity {
+    margin: 0 0 16px;
+    color: #059669;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+html.theme-dark .daily-result-note.is-parity { color: #34d399; }
+
+/* ===== 第 42 项：周报未解锁页（RootView.swift:1938-1967） ===== */
+
+.weekly-lock {
+    min-height: 520px;
+    padding: 0 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.weekly-lock-icon {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.weekly-lock-kicker {
+    color: #10b981;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+
+.weekly-lock h2 {
+    margin: 8px 0 0;
+    color: #0f172a;
+    font-size: 21px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.weekly-lock p {
+    margin: 9px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.weekly-lock-progress {
+    width: 100%;
+    max-width: 300px;
+    margin-top: 24px;
+    padding: 13px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid #a7f3d0;
+    border-radius: 16px;
+}
+
+.weekly-lock-progress-head {
+    display: flex;
+    justify-content: space-between;
+    color: #059669;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.weekly-lock-progress-head strong {
+    font-weight: 900;
+}
+
+.weekly-lock-progress-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.weekly-lock-progress-track span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: #10b981;
+}
+
+.weekly-lock-progress small {
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.weekly-lock-cta {
+    min-height: 44px;
+    margin-top: 18px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 14px;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+html.theme-dark .weekly-lock-icon { background: #1c4046; color: #34d399; }
+html.theme-dark .weekly-lock-kicker { color: #34d399; }
+html.theme-dark .weekly-lock h2 { color: #f1f5f9; }
+html.theme-dark .weekly-lock p { color: #94a3b8; }
+html.theme-dark .weekly-lock-progress { background: #0f172a; border-color: #17715e; }
+html.theme-dark .weekly-lock-progress-head { color: #34d399; }
+html.theme-dark .weekly-lock-progress-track { background: #334155; }
+html.theme-dark .weekly-lock-progress-track span { background: #34d399; }
+html.theme-dark .weekly-lock-progress small { color: #64748b; }
+html.theme-dark .weekly-lock-cta { background: #34d399; }
+
+/* ===== 第 43 项：训练记录的三项指标合成一张卡（RootView.swift:1776-1783, 2258-2264） ===== */
+
+.training-records-metrics.is-one-card {
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+}
+
+.training-records-metrics.is-one-card .training-records-metric {
+    padding: 12px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: center;
+}
+
+.training-records-metrics.is-one-card .training-records-metric span {
+    color: #94a3b8;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.training-records-metrics.is-one-card .training-records-metric strong {
+    margin-top: 3px;
+    color: #4f46e5;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+
+html.theme-dark .training-records-metrics.is-one-card {
+    border-color: #334155;
+    background: #1e293b;
+}
+
+html.theme-dark .training-records-metrics.is-one-card .training-records-metric {
+    border: 0;
+    background: transparent;
+}
+
+html.theme-dark .training-records-metrics.is-one-card .training-records-metric span { color: #64748b; }
+html.theme-dark .training-records-metrics.is-one-card .training-records-metric strong { color: #818cf8; }
+
+/* ===== 第 44 项：「我的」页偏好设置（RootView.swift:780-1032） ===== */
+
+.parity-prefs {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 2px rgba(15, 23, 42, 0.025);
+}
+
+.parity-prefs-row {
+    min-height: 60px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.parity-prefs-row.is-language {
+    min-height: 70px;
+}
+
+.parity-prefs-title {
+    flex: 1;
+    min-width: 0;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.parity-prefs-divider {
+    height: 1px;
+    margin: 0 16px;
+    background: rgba(226, 232, 240, 0.7);
+}
+
+.parity-prefs-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(226, 232, 240, 0.72);
+    border-radius: 11px;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.parity-prefs-icon.is-accent {
+    border-color: #e0e7ff;
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+/* 语言：两个 42×34 的小按钮 */
+.parity-language-control {
+    flex: 0 0 auto;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    border: 1px solid #e6e9e2;
+    border-radius: 13px;
+    background: #f5f6f2;
+}
+
+.parity-language-control button {
+    width: 42px;
+    height: 34px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 900;
+    touch-action: manipulation;
+}
+
+.parity-language-control button.is-active {
+    border-color: #4f46e5;
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+/* 「重新开启全部教学」：上下各 10，左右 16，上下都有分隔线 */
+.parity-prefs-replay-wrap {
+    padding: 10px 16px;
+}
+
+.tutorial-replay-button.parity-prefs-replay {
+    width: 100%;
+    margin: 0;
+}
+
+/* 外观：轨道 surfaceTrack，选中段抬到 surface 上 */
+.parity-segmented {
+    flex: 0 0 auto;
+    padding: 3px;
+    display: flex;
+    border-radius: 17px;
+    background: #e2e8f0;
+}
+
+.parity-segmented button {
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.parity-segmented button.is-active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* 开关：照 iOS 系统开关，轨道 51×31，白色滑块 27，开启时为品牌靛蓝 */
+.parity-switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 51px;
+    height: 31px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #e9e9eb;
+    transition: background 250ms ease;
+    touch-action: manipulation;
+}
+
+.parity-switch.is-on {
+    background: #4f46e5;
+}
+
+.parity-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+    transition: transform 250ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.parity-switch.is-on .parity-switch-thumb {
+    transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .daily-gate-card { animation: none; }
+    .parity-switch,
+    .parity-switch-thumb { transition: none; }
+}
+
+html.theme-dark .parity-prefs {
+    border-color: #334155;
+    background: #1e293b;
+    box-shadow: none;
+}
+html.theme-dark .parity-prefs-title { color: #f1f5f9; }
+html.theme-dark .parity-prefs-divider { background: rgba(51, 65, 85, 0.7); }
+html.theme-dark .parity-prefs-icon { border-color: rgba(51, 65, 85, 0.72); background: #172033; color: #94a3b8; }
+html.theme-dark .parity-prefs-icon.is-accent { border-color: #3a4184; background: #2a335c; color: #818cf8; }
+html.theme-dark .parity-language-control { border-color: #334155; background: #243044; }
+html.theme-dark .parity-language-control button { border-color: #334155; background: #1e293b; color: #94a3b8; }
+html.theme-dark .parity-language-control button.is-active { border-color: #818cf8; background: #6366f1; color: #ffffff; }
+html.theme-dark .parity-segmented { background: #334155; }
+html.theme-dark .parity-segmented button { color: #cbd5e1; }
+html.theme-dark .parity-segmented button.is-active { background: #1e293b; color: #ffffff; }
+html.theme-dark .parity-switch { background: #39393d; }
+html.theme-dark .parity-switch.is-on { background: #818cf8; }
