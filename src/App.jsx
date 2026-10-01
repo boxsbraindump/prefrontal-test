@@ -3323,6 +3323,10 @@ function App() {
         const isCorrect = answerIsMatch === nback.isMatch;
         // 教学局：答错停在原题重答（220ms），答对停 500ms 再进下一题；正式局对错都进下一题。
         const inTutorial = tutorialRef.current?.task === 'nback';
+        // 限时模式答错再扣 3 秒（与 iOS 一致；教学、无限模式除外，竞技场有自己的扣 5 秒）。扣到 0 立即结束。
+        if (!isCorrect && !inTutorial && mode !== 'infinite' && mode !== 'comp') {
+            setTimeLeft(t => Math.max(0, t - 3));
+        }
         showAnswerFeedback({
             correct: isCorrect,
             points: 30,
@@ -5124,7 +5128,8 @@ function App() {
     ${(isClicked && (mode === 'hard' || mode === 'daily')) // 竞技不使用盲点，Daily 使用进阶变体
                                                     ? 'bg-white text-slate-900 border-slate-100 shadow-sm' // 只有进阶模式是“盲点”
                                                     : (isClicked
-                                                        ? 'bg-indigo-600 text-white opacity-20 border-transparent' // 竞技和基础模式：点过变蓝透明
+                                                        // 竞技和基础模式：点过的格子只有底色是 20% 的靛蓝，数字不跟着变淡（与 iOS 一致）
+                                                        ? 'bg-indigo-600/20 text-white border-transparent'
                                                         : 'bg-white text-slate-900 border-slate-100 shadow-sm'
                                                     )
                                                 }`}
@@ -5203,11 +5208,11 @@ function App() {
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-match');
                                             handleNbackAnswer(true, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 shadow-none' : 'bg-red-500 text-white shadow-none') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-different');
                                             handleNbackAnswer(false, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && !nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 ring-4 ring-emerald-100' : 'bg-red-500 text-white ring-4 ring-red-100') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && !nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 shadow-none' : 'bg-red-500 text-white shadow-none') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
                                     </div>
                                 ) : (
                                     <button disabled={!!answerFeedback} onClick={() => {

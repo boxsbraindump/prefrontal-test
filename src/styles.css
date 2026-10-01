@@ -5458,3 +5458,11 @@ body.is-app-scrollable .app-shell {
         animation: none;
     }
 }
+
+/* Stroop 答对时，选中卡片变绿，圆点变成空心白圈（与 iOS 一致；原先圆点保持原色）。 */
+.stroop-choice-button.is-correct .stroop-color-dot,
+html.theme-dark .stroop-choice-button.is-correct .stroop-color-dot {
+    background: transparent !important;
+    border-color: #ffffff;
+    box-shadow: none;
+}
