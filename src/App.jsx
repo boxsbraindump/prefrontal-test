@@ -1352,6 +1352,30 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
     };
 };
 
+// 竞技一局总时长（秒）。记录时长按「总时长 − 剩余秒数」算，被罚掉的秒也计入（iOS ArenaSession.elapsedSeconds）。
+const ARENA_DURATION_SECONDS = 90;
+// 竞技专属文案（iOS ArenaTrainingFlow.swift 的 ArenaSet / ArenaResult）。
+const ARENA_COPY = {
+    zh: {
+        setHint: '找出一组 SET：每个属性全同或全异',
+        resultTitle: '竞技结束 - 最终得分',
+        resultSubtitle: '全程混合挑战完成',
+        accuracy: '正确率',
+        correct: '答对',
+        mistakes: '错误',
+        backToArena: '返回竞技场'
+    },
+    en: {
+        setHint: 'Find a SET: every property is all same or all different.',
+        resultTitle: 'ARENA COMPLETE — FINAL SCORE',
+        resultSubtitle: 'Mixed challenge complete',
+        accuracy: 'Accuracy',
+        correct: 'Correct',
+        mistakes: 'Mistakes',
+        backToArena: 'Back to Arena'
+    }
+};
+
 function App() {
     const DEFAULT_TASK_BESTS = { schulte: 0, stroop: 0, nback: 0, setgame: 0, neuroncount: 0, passwordlogic: 0 };
     const urlParams = new URLSearchParams(window.location.search);
@@ -1408,6 +1432,8 @@ function App() {
     const [animatedScore, setAnimatedScore] = useState(0);
     const [lastRunStats, setLastRunStats] = useState(null);
     const [isError, setIsError] = useState(false);
+    // 竞技里五个模块答错都让计时胶囊闪红 400ms（iOS errorFlash），与整屏闪红（isError）分开。
+    const [timerFlash, setTimerFlash] = useState(false);
     const [answerFeedback, setAnswerFeedback] = useState(null);
     const [showInfo, setShowInfo] = useState(null);
     const [weeklyReceiptOpen, setWeeklyReceiptOpen] = useState(false);
@@ -3148,7 +3174,7 @@ function App() {
             dailyDuration: mode === 'daily' ? activeDailySpec.duration : null
         });
         if (mode === 'comp') {
-            setTimeLeft(90);
+            setTimeLeft(ARENA_DURATION_SECONDS);
             switchArenaTask();
         } else if (mode === 'daily') {
             setTimeLeft(activeDailySpec.duration || TASK_DATA[taskType].time);
@@ -3231,7 +3257,12 @@ function App() {
             setIsError(true);
             setTimeout(() => setIsError(false), 400);
         }
-        if (mode === 'comp') setTimeLeft(prev => Math.max(0, prev - 5));
+        if (mode === 'comp') {
+            setTimeLeft(prev => Math.max(0, prev - 5));
+            // 不看 flash：竞技里任何模块答错，计时胶囊都闪红（iOS applyArenaPenalty）。
+            setTimerFlash(true);
+            setTimeout(() => setTimerFlash(false), 400);
+        }
     };
 
     const clearAnswerFeedback = () => {
@@ -3342,9 +3373,12 @@ function App() {
 
     const getCurrentRunAnalytics = () => {
         const stats = runStatsRef.current || {};
-        const durationSeconds = stats.startedAtMs
-            ? Math.max(1, Math.round((Date.now() - stats.startedAtMs - awayMsRef.current) / 1000))
-            : 0;
+        // 竞技按「90 − 剩余秒数」计时长，罚掉的秒也算（iOS ArenaSession.elapsedSeconds）。
+        const durationSeconds = !stats.startedAtMs
+            ? 0
+            : mode === 'comp'
+                ? Math.max(1, ARENA_DURATION_SECONDS - Math.max(0, timeLeft))
+                : Math.max(1, Math.round((Date.now() - stats.startedAtMs - awayMsRef.current) / 1000));
 
         return {
             score,
@@ -3412,9 +3446,12 @@ function App() {
         const runStats = {
             ...runStatsRef.current,
             isImproved: previousBest > 0 && currentFinalScore > previousBest,
-            durationSeconds: runStatsRef.current.startedAtMs
-                ? Math.max(1, Math.round((Date.now() - runStatsRef.current.startedAtMs - awayMsRef.current) / 1000))
-                : 0
+            // 竞技按「90 − 剩余秒数」计时长，罚掉的秒也算（iOS ArenaSession.elapsedSeconds）。
+            durationSeconds: !runStatsRef.current.startedAtMs
+                ? 0
+                : isComp
+                    ? Math.max(1, ARENA_DURATION_SECONDS - Math.max(0, timeLeft))
+                    : Math.max(1, Math.round((Date.now() - runStatsRef.current.startedAtMs - awayMsRef.current) / 1000))
         };
         setLastScore(currentFinalScore);
         setLastRunStats(runStats);
@@ -5061,13 +5098,13 @@ function App() {
                             )}
                         </div>
                         <div className="flex items-center justify-end gap-3">
-                            <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${isError ? 'bg-red-500 text-white' : 'bg-slate-100'} ${codeTutorialStep ? 'invisible' : ''}`}>{view === 'passwordlogic' ? `${ui.codeElapsed} ${codeLogic.elapsed}s` : mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
+                            <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${(isError || timerFlash) ? 'bg-red-500 text-white' : 'bg-slate-100'} ${codeTutorialStep ? 'invisible' : ''}`}>{view === 'passwordlogic' ? `${ui.codeElapsed} ${codeLogic.elapsed}s` : mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
                             <div className="font-mono text-xl font-black text-indigo-600">{score}</div>
                         </div>
                     </div>
                     <div className="game-stage flex-1 flex items-center justify-center p-6">
                         {view === 'schulte' && (
-                            <div className="relative w-full max-w-sm">
+                            <div className={`relative w-full max-w-sm ${mode === 'comp' ? 'arena-module-enter' : ''}`}>
                             {tutorialTask === 'schulte' && (schulte.index || 0) < 5 && (
                                 <div className="schulte-tutorial-pill">{
                                     (schulte.index || 0) === 0
@@ -5125,7 +5162,7 @@ function App() {
                                                 }
                                             }}
                                             className={`schulte-cell flex items-center justify-center font-bold ${schulte.cols === 6 ? 'text-sm' : 'text-lg'} rounded-lg border transition-all ${tutorialTask === 'schulte' && n === schulte.next && (schulte.index || 0) < 5 ? 'is-tutorial-target' : ''} ${controlPulse === `schulte-${n}` ? `is-tap-pulsing ${controlPulseIsError ? 'is-tap-error' : ''}` : ''}
-    ${(isClicked && (mode === 'hard' || mode === 'daily')) // 竞技不使用盲点，Daily 使用进阶变体
+    ${(isClicked && (mode === 'hard' || mode === 'daily' || (mode === 'comp' && isArenaAdvanced))) // 进阶、每日（进阶变体）和进阶竞技用盲点：已点格不标记；基础竞技照常标记
                                                     ? 'bg-white text-slate-900 border-slate-100 shadow-sm' // 只有进阶模式是“盲点”
                                                     : (isClicked
                                                         // 竞技和基础模式：点过的格子只有底色是 20% 的靛蓝，数字不跟着变淡（与 iOS 一致）
@@ -5142,7 +5179,7 @@ function App() {
                             </div>
                         )}
                         {view === 'stroop' && (
-                            <div className="flex flex-col items-center space-y-12 w-full">
+                            <div className={`flex flex-col items-center space-y-12 w-full ${mode === 'comp' ? 'arena-module-enter' : ''}`}>
                                 {tutorialTask === 'stroop' && (
                                     <div className="tutorial-instruction">{isEnglish
                                         ? `Tutorial ${(tutorial.correct || 0) + 1}/3: Ignore the word. Choose the answer matching the word’s ink color.`
@@ -5165,13 +5202,13 @@ function App() {
                                                 // 教学局答对多停一会儿（500ms），让人看清对在哪
                                                 duration: tutorialTask === 'stroop' && isCorrect ? 500 : undefined
                                             });
-                                        }} className={`stroop-choice-button ${tutorialTask === 'stroop' && !answerFeedback && o.val === stroop.color ? 'is-tutorial-target' : ''} ${controlPulse === `stroop-${o.val}` ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{(mode === 'normal' || mode === 'infinite') ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
+                                        }} className={`stroop-choice-button ${tutorialTask === 'stroop' && !answerFeedback && o.val === stroop.color ? 'is-tutorial-target' : ''} ${controlPulse === `stroop-${o.val}` ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === o.val ? (answerFeedback.status === 'correct' ? 'is-correct' : 'is-wrong') : ''}`}>{(mode === 'normal' || mode === 'infinite' || (mode === 'comp' && !isArenaAdvanced)) ? <div className="stroop-color-dot" style={{ backgroundColor: o.val }}></div> : (isEnglish ? o.en : o.zh)}</button>
                                     ))}
                                 </div>
                             </div>
                         )}
                         {view === 'nback' && (
-                            <div className="flex flex-col items-center w-full">
+                            <div className={`flex flex-col items-center w-full ${mode === 'comp' ? 'arena-module-enter' : ''}`}>
                                 <div className="nback-prompt-wrap mb-12">
                                     <div className="nback-round-progress">
                                         {!nback.isReady
@@ -5221,12 +5258,17 @@ function App() {
                                 )}
                             </div>
                         )}
+                        {/* 竞技里五个模块切换统一用 0.98 缩放 + 淡入（iOS ArenaGameStage）；训练里 SET、神经元仍用原来的弹出 */}
                         {view === 'setgame' && (
-                            <div className="setgame-layout flex flex-col items-center w-full animate-pop-center">
+                            <div className={`setgame-layout flex flex-col items-center w-full ${mode === 'comp' ? 'arena-module-enter' : 'animate-pop-center'}`}>
                                 {tutorialTask === 'setgame' && (
                                     <div className="set-warmup-hint">{isEnglish
                                         ? `Tutorial: find three cards. For ${isChallengeDifficulty ? 'color, shape, and fill level' : 'color and shape'}, each property must be all the same or all different.`
                                         : `教学：找出三个图形：${isChallengeDifficulty ? '颜色、形状和填充度' : '颜色和形状'}每一种属性都必须完全相同，或完全不同。`}</div>
+                                )}
+                                {mode === 'comp' && (
+                                    // 竞技的 SET 牌面上方有一行规则提示，两档同文案（iOS ArenaSet）
+                                    <div className="arena-set-hint">{ARENA_COPY[isEnglish ? 'en' : 'zh'].setHint}</div>
                                 )}
                                 {/* --- 游戏网格 --- */}
                                 <div className="setgame-grid grid grid-cols-3 gap-2 w-full max-w-sm">
@@ -5309,7 +5351,7 @@ function App() {
                             </div>
                         )}
                         {view === 'neuroncount' && (
-                            <div className="neuron-layout flex flex-col items-center w-full animate-pop-center min-h-0">
+                            <div className={`neuron-layout flex flex-col items-center w-full min-h-0 ${mode === 'comp' ? 'arena-module-enter' : 'animate-pop-center'}`}>
                                 {neuronTutorialAction && (
                                     <div className="tutorial-instruction neuron-tutorial-instruction">{
                                         neuronTutorialAction === 'increment'
@@ -5554,6 +5596,37 @@ function App() {
                 // 也没有「正确率」可言——它的指标和 iOS 结果页保持一致。
                 const isCodeLogicResult = lastRunStats?.task === 'passwordlogic';
                 const resultPresentation = getResultPresentation({ isDailyResult, resultAccuracy });
+                // 竞技专属结算页（iOS ArenaResult）：双剑图标、固定副标题、不出评语和新纪录奖杯，
+                // 指标不带「次」，按钮回竞技首页（mode 仍是 comp）。分数滚动沿用通用的 animatedScore。
+                const isArenaResult = mode === 'comp';
+                if (isArenaResult) {
+                    const arenaCopy = ARENA_COPY[isEnglish ? 'en' : 'zh'];
+                    return (
+                        <div className="arena-result flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
+                            <div className="result-icon-orb is-arena">
+                                <Icon name="swords" className="w-10 h-10" />
+                            </div>
+                            <div className="arena-result-title">{arenaCopy.resultTitle}</div>
+                            <div className="result-score-counter text-6xl font-black mb-6 font-mono text-indigo-600">{animatedScore}</div>
+                            <div className="arena-result-subtitle">{arenaCopy.resultSubtitle}</div>
+                            <div className="result-metrics-grid arena-result-metrics w-full max-w-sm">
+                                <div className="result-metric">
+                                    <span>{arenaCopy.accuracy}</span>
+                                    <strong>{resultAccuracy}%</strong>
+                                </div>
+                                <div className="result-metric">
+                                    <span>{arenaCopy.correct}</span>
+                                    <strong>{lastRunStats?.correct || 0}</strong>
+                                </div>
+                                <div className="result-metric">
+                                    <span>{arenaCopy.mistakes}</span>
+                                    <strong>{lastRunStats?.incorrect || 0}</strong>
+                                </div>
+                            </div>
+                            <button onClick={() => { playSound('tap'); setView('home'); }} className="arena-result-button w-full max-w-sm">{arenaCopy.backToArena}</button>
+                        </div>
+                    );
+                }
                 return (
                     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
                         <div className={`result-icon-orb ${resultPresentation.className}`}>

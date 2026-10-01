@@ -1,1 +1,116 @@
 /* 安卓与 iOS 对齐第四批：arena 区域的样式（深色覆盖也写在本文件，用 html.theme-dark 前缀）。见外层仓库 docs/ANDROID_PARITY.md。 */
+
+/* 36b 竞技 SET 牌面上方的规则提示（iOS ArenaSet：12pt bold，textSecondary，与九宫格间距 16） */
+.arena-set-hint {
+    margin-bottom: 16px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+}
+
+html.theme-dark .arena-set-hint {
+    color: #94a3b8;
+}
+
+/* 36c 竞技模块切换：0.98 缩放 + 淡入，0.2s ease-out（iOS ArenaGameStage） */
+@keyframes arena-module-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes arena-module-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.arena-module-enter {
+    animation: arena-module-enter 0.2s ease-out both;
+}
+
+/* 减弱动态：只淡入，0.12s（iOS 同） */
+@media (prefers-reduced-motion: reduce) {
+    .arena-module-enter {
+        animation: arena-module-fade 0.12s ease-out both;
+    }
+}
+
+/* 37 竞技专属结算页（iOS ArenaResult） */
+.result-icon-orb.is-arena {
+    background: #fffbeb;
+    color: #f59e0b;
+    box-shadow: 0 18px 36px rgba(245, 158, 11, 0.14);
+}
+
+html.theme-dark .result-icon-orb.is-arena {
+    background: #3c3934;
+    color: #f59e0b;
+}
+
+.arena-result-title {
+    margin-bottom: 2px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+html.theme-dark .arena-result-title {
+    color: #94a3b8;
+}
+
+.arena-result-subtitle {
+    margin-bottom: 6px;
+    color: #f59e0b;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+/* 指标：间距 8、下距 32，格子无阴影，标签用 textSecondary */
+.arena-result-metrics {
+    margin-bottom: 32px;
+}
+
+.arena-result-metrics .result-metric {
+    box-shadow: none;
+}
+
+.arena-result-metrics .result-metric span {
+    color: #64748b;
+}
+
+html.theme-dark .arena-result-metrics .result-metric {
+    box-shadow: none;
+}
+
+html.theme-dark .arena-result-metrics .result-metric span {
+    color: #94a3b8;
+}
+
+/* 按钮：inkFill 底、textOnInk 字，高 52，圆角 16，无阴影 */
+.arena-result-button {
+    height: 52px;
+    border-radius: 16px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+html.theme-dark .arena-result-button {
+    background: #f1f5f9;
+    color: #0f172a;
+}
