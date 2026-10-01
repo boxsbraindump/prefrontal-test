@@ -1,1 +1,289 @@
 /* 安卓与 iOS 对齐第四批：shell 区域的样式（深色覆盖也写在本文件，用 html.theme-dark 前缀）。见外层仓库 docs/ANDROID_PARITY.md。 */
+
+/* ===== 第 22 项：基础/进阶/无限、竞技基础/进阶分段控件 =====
+   与 iOS 1.0.2 一致：WebsiteTrainingHome.swift modeControl / modeButton，RootView.swift arenaDifficultyControl。
+   轨道高 52、内边距 5、圆角 26；选中块高 42、圆角 20、白底、黑色 0.04 阴影；字 10 bold；easeOut 0.16s 原地切换。
+   styles.css 在几个小屏/矮屏媒体查询里用 !important 改了 margin 和按钮上下内边距，这里同样用 !important 盖掉。 */
+.home-screen .mode-tabs {
+    height: 52px;
+    padding: 5px !important;
+    gap: 0;
+    border-radius: 26px !important;
+    background: #e2e8f0;
+    margin-bottom: 13px !important;
+}
+
+.home-screen .mode-tabs button {
+    height: 42px;
+    padding: 0 !important;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    transition: background-color 0.16s ease-out, color 0.16s ease-out, box-shadow 0.16s ease-out;
+}
+
+.home-screen .mode-tabs button.is-active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* 深色：轨道 #334155，选中块 #1E293B；10px 小字在深色下靛蓝看不清，选中白字、未选中 #CBD5E1（iOS segmentLabel*）。 */
+html.theme-dark .home-screen .mode-tabs {
+    background: #334155;
+}
+
+html.theme-dark .home-screen .mode-tabs button {
+    color: #cbd5e1;
+}
+
+html.theme-dark .home-screen .mode-tabs button.is-active {
+    background: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ===== 第 23 项：底部 tab 栏 =====
+   与 iOS 1.0.2 一致：RootView.swift RootNavigationBar / RootNavigationItem。
+   外框高 70、圆角 34、左右内边距 8、上下 6、按钮间距 3；底色 surface 0.94，无毛玻璃；1px 描边 stroke 0.9；
+   阴影 shadowNavy 0.12 radius 14 y 8。距屏幕左右 14，底部在 safe area 之上再加 8。
+   按钮高 58、圆角 29、图标 17、字 10 bold、图标与字间距 3；选中块不带阴影，按下不缩放。
+   网页的边框占盒子尺寸（border-box），所以内边距各减 1px，内容区仍是 58 高。
+   宽屏（≥900px）仍用原来的顶栏布局，不在这次范围内。 */
+body {
+    --mobile-nav-height: 70px;
+    --mobile-nav-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    /* 70 + 8 + 18 = 96，与 iOS bottomNavigationClearance 96 一致。 */
+    --mobile-nav-gap: 18px;
+}
+
+.app-nav {
+    transition: opacity 0.12s ease-out;
+}
+
+/* 规则弹窗或首玩引导出现时淡出（iOS opacity 0，easeOut 0.12s）。 */
+.app-nav.is-overlay-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (max-width: 899px) {
+    .app-nav {
+        left: 14px;
+        right: 14px;
+        bottom: var(--mobile-nav-bottom);
+        height: 70px;
+        padding: 5px 7px;
+        gap: 0;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 34px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 8px 28px rgba(30, 41, 59, 0.12);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .app-nav .app-nav-items {
+        position: relative;
+        gap: 3px;
+        height: 58px;
+    }
+
+    .app-nav .app-nav-items .app-nav-button {
+        position: relative;
+        z-index: 1;
+        height: 58px;
+        border-radius: 29px;
+        background: transparent;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 700;
+        gap: 3px;
+        box-shadow: none;
+        transform: none;
+        transition: color 0.28s cubic-bezier(0.42, 0, 0.58, 1);
+    }
+
+    /* 选中底色由下面的滑块画，按钮本身不再上色、不带阴影（覆盖 styles.css / theme-dark.css 里各 is-active 规则）。 */
+    .app-nav .app-nav-items .app-nav-button.is-active {
+        background: transparent;
+        color: #ffffff;
+        box-shadow: none;
+    }
+
+    .app-nav .app-nav-items .app-nav-button:active {
+        transform: none;
+    }
+
+    .app-nav .app-nav-items .app-nav-button > span:first-child,
+    .app-nav .app-nav-items .app-nav-button > span:first-child svg {
+        width: 17px;
+        height: 17px;
+        flex: 0 0 17px;
+    }
+
+    /* 选中滑块：iOS matchedGeometryEffect，easeInOut 0.28s。颜色跟随目标 tab。 */
+    .app-nav-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        width: calc((100% - (var(--nav-count, 4) - 1) * 3px) / var(--nav-count, 4));
+        height: 58px;
+        border-radius: 29px;
+        background: #4f46e5;
+        transform: translateX(calc(var(--nav-index, 0) * (100% + 3px)));
+        transition: transform 0.28s cubic-bezier(0.42, 0, 0.58, 1), background-color 0.28s cubic-bezier(0.42, 0, 0.58, 1);
+        pointer-events: none;
+    }
+
+    /* 训练、我的：navTraining；每日挑战：navDaily；竞技：navArena（iOS 1.0.2 selectedPillColor）。 */
+    .app-nav-indicator.is-daily {
+        background: #10b981;
+    }
+
+    .app-nav-indicator.is-arena {
+        background: #f59e0b;
+    }
+
+    html.theme-dark .app-nav {
+        border-color: rgba(51, 65, 85, 0.9);
+        background: rgba(30, 41, 59, 0.94);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    html.theme-dark .app-nav .app-nav-items .app-nav-button {
+        color: #94a3b8;
+    }
+
+    html.theme-dark .app-nav .app-nav-items .app-nav-button.is-active {
+        color: #ffffff;
+        box-shadow: none;
+    }
+
+    html.theme-dark .app-nav-indicator {
+        background: #6366f1;
+    }
+
+    html.theme-dark .app-nav-indicator.is-daily {
+        background: #10b981;
+    }
+
+    html.theme-dark .app-nav-indicator.is-arena {
+        background: #f59e0b;
+    }
+}
+
+@media (min-width: 900px) {
+    .app-nav-indicator {
+        display: none;
+    }
+}
+
+/* 图标上跳：iOS 选中变化时图标 y -3.5、放大 1.035，easeOut 0.10s，再 easeOut 0.14s 回位。 */
+.app-nav-button.is-nudging > span:first-child {
+    animation: parity-nav-nudge 240ms both;
+}
+
+@keyframes parity-nav-nudge {
+    0% {
+        transform: translateY(0) scale(1);
+        animation-timing-function: ease-out;
+    }
+
+    42% {
+        transform: translateY(-3.5px) scale(1.035);
+        animation-timing-function: ease-out;
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-nav-indicator {
+        transition: none;
+    }
+
+    .app-nav-button.is-nudging > span:first-child {
+        animation: none;
+    }
+}
+
+/* ===== 第 24 项：首玩引导弹窗 =====
+   与 iOS 一致：WebsiteTrainingHome.swift FirstPlayNudge。
+   遮罩 scrim 0.26、不模糊、无单独淡入；卡片从 0.94 放大淡入，cubic-bezier(0.2,1.2,0.3,1) 0.34s；
+   卡片阴影 shadowNavy 0.20 radius 30 y 16；标题 textStrong；主按钮阴影 accentFill 0.20 radius 11 y 7、实心白色三角；
+   次按钮全宽。 */
+.first-play-nudge {
+    background: rgba(15, 23, 42, 0.26);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    animation: none;
+}
+
+.first-play-nudge-card {
+    box-shadow: 0 16px 60px rgba(30, 41, 59, 0.2);
+    animation: parity-first-play-pop 340ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+@keyframes parity-first-play-pop {
+    from {
+        transform: scale(0.94);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.first-play-nudge-card h2 {
+    color: #1e293b;
+    line-height: 1.27;
+}
+
+.first-play-nudge-primary {
+    box-shadow: 0 7px 22px rgba(79, 70, 229, 0.2);
+}
+
+.first-play-nudge-primary svg {
+    fill: currentColor;
+    stroke: none;
+}
+
+.first-play-nudge-secondary {
+    width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .first-play-nudge-card {
+        animation: weekly-report-prompt-fade 180ms ease-out both;
+    }
+}
+
+html.theme-dark .first-play-nudge {
+    background: rgba(2, 6, 23, 0.26);
+}
+
+html.theme-dark .first-play-nudge-card {
+    box-shadow: 0 16px 60px rgba(0, 0, 0, 0.2);
+}
+
+html.theme-dark .first-play-nudge-card h2 {
+    color: #e2e8f0;
+}
+
+html.theme-dark .first-play-nudge-primary {
+    box-shadow: 0 7px 22px rgba(99, 102, 241, 0.2);
+}

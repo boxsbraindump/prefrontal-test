@@ -526,11 +526,12 @@ const getInitialLanguage = () => {
         // Language detection still works when browser storage is unavailable.
     }
 
-    const browserLanguages = navigator.languages?.length
-        ? navigator.languages
-        : [navigator.language || ''];
+    // 与 iOS 一致（PlayerProfile.swift systemPrefersChinese）：只看系统语言列表的第一项，
+    // 语言子标签恰好是 zh 才用中文（zh-CN、zh-Hant-TW、zh 都算），其余一律英文。
+    // 原先只要列表里任何一项是中文就判中文，英文在前、中文在后的设备会被错判。
+    const firstLanguage = (navigator.languages && navigator.languages[0]) || navigator.language || '';
 
-    return browserLanguages.some(language => language.toLowerCase().startsWith('zh'))
+    return firstLanguage.toLowerCase().split(/[-_]/)[0] === 'zh'
         ? 'zh'
         : 'en';
 };
@@ -1817,10 +1818,24 @@ function App() {
         try { localStorage.setItem('pfl_first_play_nudge_done', 'true'); } catch (e) { }
         setShowFirstPlayNudge(false);
         if (shouldStart) {
-            setMode('normal');
-            startChallenge('schulte');
+            // 与 iOS 一致（WebsiteTrainingHome.swift startFirstPlaySchulte）：先切回基础，再开舒尔特。
+            // startChallenge 读的是本次渲染里的 mode，在进阶/无限档直接调用会按旧档位开局，
+            // 所以档位不是基础时，等 mode 真正变成 normal 之后再由下面的 effect 开局。
+            if (mode === 'normal') {
+                startChallenge('schulte');
+            } else {
+                pendingFirstPlayStartRef.current = true;
+                setMode('normal');
+            }
         }
     };
+
+    const pendingFirstPlayStartRef = useRef(false);
+    useEffect(() => {
+        if (!pendingFirstPlayStartRef.current || mode !== 'normal') return;
+        pendingFirstPlayStartRef.current = false;
+        startChallenge('schulte');
+    }, [mode]);
 
     const markWeeklyReportPromptSeen = () => {
         try {
@@ -1902,6 +1917,37 @@ function App() {
             }
         }
     ];
+
+    // 与 iOS 1.0.2 一致（RootView.swift tabPage / RootNavigationBar）：切 tab 时新页面从 ±18pt 淡入归位
+    // （easeInOut 0.28s；减弱动态效果时只淡入 0.16s），选中 tab 的图标上跳一下（0.10s 上、0.14s 回）。
+    // 往右边的 tab 切，新页面从右边进来。用 Web Animations 直接作用在当前页面根节点上，不改各页面的 JSX。
+    const activeNavIndex = navItems.findIndex(item => item.active);
+    const activeNavKey = activeNavIndex >= 0 ? navItems[activeNavIndex].key : null;
+    const previousNavIndexRef = useRef(activeNavIndex);
+    const [nudgedNavKey, setNudgedNavKey] = useState(null);
+    React.useLayoutEffect(() => {
+        const previousIndex = previousNavIndexRef.current;
+        previousNavIndexRef.current = activeNavIndex;
+        if (previousIndex < 0 || activeNavIndex < 0 || previousIndex === activeNavIndex) return undefined;
+        const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        const page = document.querySelector('.app-content-screen');
+        if (page && typeof page.animate === 'function') {
+            const offset = reduceMotion ? 0 : (activeNavIndex > previousIndex ? 18 : -18);
+            page.animate(
+                [
+                    { opacity: 0, transform: `translateX(${offset}px)` },
+                    { opacity: 1, transform: 'translateX(0px)' }
+                ],
+                reduceMotion
+                    ? { duration: 160, easing: 'ease-out' }
+                    : { duration: 280, easing: 'cubic-bezier(0.42, 0, 0.58, 1)' }
+            );
+        }
+        if (reduceMotion) return undefined;
+        setNudgedNavKey(navItems[activeNavIndex].key);
+        const timer = setTimeout(() => setNudgedNavKey(null), 240);
+        return () => clearTimeout(timer);
+    }, [activeNavIndex]);
 
     useEffect(() => {
         if (view === 'analytics' && !isOwner) {
@@ -3702,7 +3748,7 @@ function App() {
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
 
-    const isFirstPlayNudgeVisible = showFirstPlayNudge && view === 'home' && mode === 'normal' && (!showUpdateNote || urlParams.has('suppressUpdate'));
+    const isFirstPlayNudgeVisible = showFirstPlayNudge && view === 'home' && mode !== 'daily' && mode !== 'comp' && (!showUpdateNote || urlParams.has('suppressUpdate'));
 
     const tutorialTask = tutorial?.task || null;
     const isNbackTutorialCompare = tutorialTask === 'nback' && nback.isReady && nback.previous !== null;
@@ -3762,6 +3808,7 @@ function App() {
                 </div>
             )}
 
+            {/* 首玩引导：与 iOS 一致，训练页基础/进阶/无限三档都弹（WebsiteTrainingHome.swift showsFirstPlayNudge）。 */}
             {isFirstPlayNudgeVisible && (
                 <div className="first-play-nudge fixed inset-0 z-[100] flex items-center justify-center p-5">
                     <div className="first-play-nudge-card" role="dialog" aria-modal="true">
@@ -3780,9 +3827,14 @@ function App() {
                 </div>
             )}
 
-            {/* 规则弹窗或首玩引导出现时不显示 tab 栏，免得它从遮罩下露出来还能点（与 iOS 一致）。 */}
-            {(view === 'home' || view === 'analytics' || view === 'settings' || view === 'settings-daily') && !showInfo && !isFirstPlayNudgeVisible && (
-                <nav className="app-nav" aria-label="Primary navigation">
+            {/* 规则弹窗或首玩引导出现时 tab 栏淡出且不可点（与 iOS 一致：RootView.swift opacity 0，easeOut 0.12s）。 */}
+            {(view === 'home' || view === 'analytics' || view === 'settings' || view === 'settings-daily') && (
+                <nav
+                    className={`app-nav ${(showInfo || isFirstPlayNudgeVisible) ? 'is-overlay-hidden' : ''}`}
+                    aria-label="Primary navigation"
+                    aria-hidden={(showInfo || isFirstPlayNudgeVisible) ? 'true' : undefined}
+                    inert={(showInfo || isFirstPlayNudgeVisible) ? '' : undefined}
+                >
                     <div className="app-nav-brand">
                         <div className="app-nav-logo">
                             <Icon name="brain-circuit" className="w-5 h-5" />
@@ -3792,19 +3844,24 @@ function App() {
                             <div className="app-nav-subtitle">Prefrontal Lab</div>
                         </div>
                     </div>
-                    <div className="app-nav-items">
+                    <div className="app-nav-items" style={{ '--nav-count': navItems.length }}>
+                        {/* 选中色块单独一层，切 tab 时滑过去（与 iOS matchedGeometryEffect 一致）。 */}
+                        {activeNavIndex >= 0 && (
+                            <span
+                                className={`app-nav-indicator is-${activeNavKey}`}
+                                style={{ '--nav-index': activeNavIndex }}
+                                aria-hidden="true"
+                            />
+                        )}
                         {navItems.map(item => (
                             <button
                                 key={item.key}
                                 onClick={item.onClick}
                                 disabled={item.disabled}
-                                className={`app-nav-button is-${item.key} ${item.active ? 'is-active' : ''} ${item.disabled ? 'is-disabled' : ''}`}
+                                className={`app-nav-button is-${item.key} ${item.active ? 'is-active' : ''} ${item.disabled ? 'is-disabled' : ''} ${nudgedNavKey === item.key ? 'is-nudging' : ''}`}
                             >
-                                {item.key === 'settings' ? (
-                                    <span className="nav-avatar-glyph" aria-hidden="true" />
-                                ) : (
-                                    <Icon name={item.icon} className="w-5 h-5" />
-                                )}
+                                {/* 「我的」与 iOS 一样用圆圈头像图标（iOS 资源 lucide-person 即 circle-user-round）。 */}
+                                <Icon name={item.icon} className="w-5 h-5" />
                                 <span>{item.label}</span>
                             </button>
                         ))}
@@ -3864,12 +3921,13 @@ function App() {
                     )}
 
                     {mode === 'comp' && (
-                        <div className="mode-tabs flex w-full max-w-sm bg-slate-200 p-1 rounded-2xl mb-8 shrink-0">
+                        // 胶囊分段控件，样式在 parity-shell.css（与 iOS 1.0.2 RootView.swift arenaDifficultyControl 一致）。
+                        <div className="mode-tabs flex w-full max-w-sm shrink-0">
                             {['basic', 'advanced'].map(tier => (
                                 <button
                                     key={tier}
                                     onClick={() => { playSound('tap'); setArenaDifficulty(tier); }}
-                                    className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all ${arenaDifficulty === tier ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                    className={`flex-1 ${arenaDifficulty === tier ? 'is-active' : ''}`}
                                 >
                                     {tier === 'basic' ? ui.normal : ui.hard}
                                 </button>
@@ -3878,7 +3936,8 @@ function App() {
                     )}
 
                     {mode !== 'daily' && mode !== 'comp' && (
-                        <div className="mode-tabs flex w-full max-w-sm bg-slate-200 p-1 rounded-2xl mb-8 shrink-0">
+                        // 胶囊分段控件，样式在 parity-shell.css（与 iOS WebsiteTrainingHome.swift modeControl 一致）。
+                        <div className="mode-tabs flex w-full max-w-sm shrink-0">
                             {['normal', 'hard', 'infinite'].map(m => (
                                 <button
                                     key={m}
@@ -3886,7 +3945,7 @@ function App() {
                                         playSound('tap');
                                         setMode(m);
                                     }}
-                                    className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all ${mode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                    className={`flex-1 ${mode === m ? 'is-active' : ''}`}
                                 >
                                     {m === 'normal' ? ui.normal : m === 'infinite' ? ui.infinite : ui.hard}
                                 </button>
