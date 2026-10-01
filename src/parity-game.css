@@ -1,1 +1,228 @@
 /* 安卓与 iOS 对齐第四批：game 区域的样式（深色覆盖也写在本文件，用 html.theme-dark 前缀）。见外层仓库 docs/ANDROID_PARITY.md。 */
+
+/* ---------- 29 游戏顶栏（iOS 各 Flow 的 topbar） ---------- */
+/* 模式小标题：9pt black、字距 1pt、不转大写。 */
+.game-topbar-eyebrow {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+.game-topbar-eyebrow.is-training { color: #4f46e5; }
+.game-topbar-eyebrow.is-endless { color: #0ea5e9; }
+.game-topbar-eyebrow.is-daily { color: #10b981; }
+html.theme-dark .game-topbar-eyebrow.is-training { color: #818cf8; }
+html.theme-dark .game-topbar-eyebrow.is-endless { color: #38bdf8; }
+html.theme-dark .game-topbar-eyebrow.is-daily { color: #34d399; }
+
+/* 计时胶囊：12 bold 等宽，高 25，左右 8，圆角 4，surfaceSunken 底。 */
+.game-topbar-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 25px;
+    padding: 0 8px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.game-topbar-timer.is-error { background: #ef4444; color: #ffffff; }
+html.theme-dark .game-topbar-timer { background: #172033; color: #f1f5f9; }
+html.theme-dark .game-topbar-timer.is-error { background: #f87171; color: #ffffff; }
+
+/* 密码推理「已用」标签：9pt black、textTertiary，后面接等宽秒数。 */
+.code-topbar-elapsed span {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 9px;
+    font-weight: 900;
+    color: #94a3b8;
+}
+.code-topbar-elapsed strong { font-weight: 700; }
+html.theme-dark .code-topbar-elapsed span { color: #64748b; }
+
+/* 密码推理无限模式「第 n 题」胶囊：surfaceAccent 底、accentForeground 字，右侧多留 8。 */
+.code-topbar-puzzle-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 8px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 9px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+html.theme-dark .code-topbar-puzzle-pill { background: #2a335c; color: #818cf8; }
+
+/* 「结束本次训练」：无底色，1px 描边，圆角 8。 */
+.code-topbar-end-button {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 900;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+html.theme-dark .code-topbar-end-button { border-color: #334155; color: #94a3b8; }
+
+/* ---------- 28 N-Back 反馈按钮 ---------- */
+/* iOS 的点击反馈只有缩放 0.96，没有靛蓝染色层和内描边。 */
+.nback-choice-button::after,
+html.theme-dark .nback-choice-button::after {
+    display: none;
+}
+/* 深色下反馈色用 iOS 的 feedbackCorrect / feedbackWrong 深色值。 */
+html.theme-dark .nback-choice-button.is-feedback-correct { background-color: #34d399; }
+html.theme-dark .nback-choice-button.is-feedback-wrong { background-color: #f87171; }
+
+/* ---------- 30 舒尔特已点格（深色） ---------- */
+/* iOS 深色 accentFill 是 #6366F1，20% 底色跟着换。 */
+html.theme-dark .schulte-cell.bg-indigo-600\/20 { background-color: rgba(99, 102, 241, 0.2); }
+
+/* ---------- 31 Stroop 反馈卡 ---------- */
+/* 反馈卡只有纯色填充，没有外环和投影（iOS feedbackCardFill）。 */
+.stroop-choice-button.is-correct,
+.stroop-choice-button.is-wrong,
+html.theme-dark .stroop-choice-button.is-correct,
+html.theme-dark .stroop-choice-button.is-wrong {
+    box-shadow: none;
+}
+/* 答错：圆点保留原色，白色 3px 外圈 + 内侧 38% 白细圈，没有外侧暗环；深色下也是白圈。 */
+.stroop-choice-button.is-wrong .stroop-color-dot,
+html.theme-dark .stroop-choice-button.is-wrong .stroop-color-dot {
+    border-color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+}
+
+/* ---------- 33 结算页固定图标 ---------- */
+/* N-Back / SET / 神经元：页面底色的圆，图标颜色跟评语颜色（由 feedback.color 的文字色类给出）。 */
+.result-icon-orb.is-fixed-icon {
+    background: #f8fafc;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+}
+.result-icon-orb.is-fixed-icon.is-fixed-accent { background: #eef2ff; }
+html.theme-dark .result-icon-orb.is-fixed-icon { background: #0f172a; }
+html.theme-dark .result-icon-orb.is-fixed-icon.is-fixed-accent { background: #2a335c; }
+/* 密码推理：锁形图标，surfaceAccent 圆底，没有投影。 */
+.result-icon-orb.is-fixed-icon.is-codelogic {
+    background: #eef2ff;
+    color: #4f46e5;
+    box-shadow: none;
+}
+html.theme-dark .result-icon-orb.is-fixed-icon.is-codelogic {
+    background: #2a335c;
+    color: #818cf8;
+    box-shadow: none;
+}
+
+/* ---------- 34 密码推理输入格、键盘、提示胶囊 ---------- */
+.code-slot-row { gap: 12px; }
+.code-slot-row.is-four { gap: 10px; }
+
+.code-slot {
+    width: 64px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+    font-size: 34px;
+    font-weight: 900;
+    transition: border-color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.code-slot.is-four { width: 56px; }
+.code-slot.is-selected { border: 2px solid #4f46e5; }
+.code-slot.is-empty { color: #94a3b8; }
+html.theme-dark .code-slot { background: #1e293b; border-color: #334155; color: #f1f5f9; }
+html.theme-dark .code-slot.is-selected { border-color: #818cf8; }
+html.theme-dark .code-slot.is-empty { color: #64748b; }
+
+.code-keypad {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.code-keypad-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.code-key {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    -webkit-tap-highlight-color: transparent;
+}
+.code-key.is-label {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+}
+/* 「提交」：accentFill 底、白字，没有边框和阴影。 */
+.code-key.is-primary {
+    border-color: transparent;
+    background: #4f46e5;
+    color: #ffffff;
+}
+html.theme-dark .code-key { background: #1e293b; border-color: #334155; color: #f1f5f9; }
+html.theme-dark .code-key.is-primary { background: #6366f1; border-color: transparent; color: #ffffff; }
+
+/* iOS 在游戏区可用高度不足 620 时用紧凑尺寸；网页按视口高度（含 56 顶栏）近似。 */
+@media (max-height: 676px) {
+    .code-keypad,
+    .code-keypad-row { gap: 6px; }
+    .code-key { height: 46px; }
+}
+
+.code-feedback-pill {
+    display: flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.code-feedback-pill.is-incomplete { background: #64748b; }
+.code-feedback-pill.is-wrong { background: #ef4444; }
+.code-feedback-pill.is-correct { background: #10b981; }
+html.theme-dark .code-feedback-pill.is-incomplete { background: #94a3b8; }
+html.theme-dark .code-feedback-pill.is-wrong { background: #f87171; }
+html.theme-dark .code-feedback-pill.is-correct { background: #34d399; }
+
+/* 顶栏右侧挤不下时：胶囊和计时不缩，只让「结束本次训练」省略号截断。 */
+.code-topbar-puzzle-pill,
+.game-topbar-timer { flex-shrink: 0; }
+.code-topbar-end-button {
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    line-height: 24px;
+}

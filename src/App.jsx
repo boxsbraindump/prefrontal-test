@@ -242,13 +242,13 @@ const UI_TEXT = {
         codeResultCompleted: "Completed",
         codeResultTime: "Solve time",
         codeResultIncorrect: "Incorrect",
-        resultTitle: "Training Complete - Final Score",
+        resultTitle: "ROUND COMPLETE · FINAL SCORE",
         resultAccuracy: "Accuracy",
         resultTime: "Time",
         resultCorrect: "Correct",
         resultMistakes: "Mistakes",
         resultTimes: "",
-        backHome: "Back to Lobby"
+        backHome: "Back to Lab"
     }
 };
 
@@ -276,11 +276,12 @@ const RESULT_TEXT = {
         { label: "这次比之前更进一步", sub: "你的进步已经看得见了，保持这个节奏就很好。", color: "text-emerald-600" }
     ],
     en: [
-        { label: "Finding Your Rhythm", sub: "No worries. Your brain may just need a little warm-up. Let's try another round.", color: "text-slate-500" },
-        { label: "Steady All the Way", sub: "Every step was thoughtful. Next round, you can gently pick up the pace.", color: "text-indigo-500" },
-        { label: "Full of Momentum", sub: "Your speed is already great. A touch more control will bring it even closer to perfect.", color: "text-blue-500" },
-        { label: "Fast and Steady", sub: "Your rhythm and accuracy worked beautifully together this round.", color: "text-purple-600" },
-        { label: "A Step Further Than Before", sub: "Your progress is showing. Keeping this rhythm is more than enough.", color: "text-emerald-600" }
+        // 英文与 iOS ResultScreenCopy.swift 一致。
+        { label: "Still finding your feet", sub: "No problem — everyone needs a warm-up round. Give it another go.", color: "text-slate-500" },
+        { label: "Steady all the way through", sub: "Every step was careful. Next round you can safely pick up the pace.", color: "text-indigo-500" },
+        { label: "Full of momentum", sub: "The speed is already there. Ease off a touch next time and it will be close to perfect.", color: "text-blue-500" },
+        { label: "Fast and steady", sub: "Your pace and your accuracy were both good. Nicely played.", color: "text-purple-600" },
+        { label: "Better than last time", sub: "You can see the progress. Keep this rhythm going.", color: "text-emerald-600" }
     ]
 };
 
@@ -851,8 +852,19 @@ const createSoundEngine = () => {
         error: [25, 30, 25]                // 答错：双段闷震＝“不对”
     };
 
+    // 防连发（与 iOS AudioManager.cooldown 一致）：每种音效各自计时，距上次同种音效不到间隔就整次丢弃，
+    // 声音和震动一起丢。静音时也照样计时，所以连点产生的震动不会比声音多。其余音效不节流。
+    const COOLDOWN_MS = { success: 70, error: 120, tap: 80, scoreTick: 58, scoreTickHigh: 58 };
+    const lastPlayedAt = {};
+
     return {
         play(kind, enabled = true) {
+            const cooldown = COOLDOWN_MS[kind];
+            if (cooldown) {
+                const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                if (lastPlayedAt[kind] !== undefined && now - lastPlayedAt[kind] < cooldown) return;
+                lastPlayedAt[kind] = now;
+            }
             if (HAPTICS[kind]) buzz(HAPTICS[kind]);
             if (!enabled) return;
             getContext();
@@ -2150,6 +2162,8 @@ function App() {
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastScore, setLastScore] = useState(0);
     const [animatedScore, setAnimatedScore] = useState(0);
+    // 密码推理结算页：分数、完成题目、用时、错误提交四个数共用这一个缓动进度（0→1），同步滚动。
+    const [codeResultEase, setCodeResultEase] = useState(1);
     const [lastRunStats, setLastRunStats] = useState(null);
     const [isError, setIsError] = useState(false);
     // 竞技里五个模块答错都让计时胶囊闪红 400ms（iOS errorFlash），与整屏闪红（isError）分开。
@@ -3625,7 +3639,7 @@ function App() {
             const codeLength = isChallengeDifficulty ? 4 : 3;
             const puzzle = tutorialTask === 'passwordlogic'
                 ? window.PFLGameLogic.codeLogic.makePuzzle(CODE_LOGIC_TUTORIAL.secret, CODE_LOGIC_TUTORIAL.guesses)
-                : window.PFLGameLogic.codeLogic.generate(codeLength, excludeCodeSecret);
+                : window.PFLGameLogic.codeLogic.next(codeLength, excludeCodeSecret); // 取预生成好的题，不在开局时现算
             if (codeFeedbackTimer.current) clearTimeout(codeFeedbackTimer.current);
             setCodeLogic({
                 puzzle,
@@ -3679,6 +3693,7 @@ function App() {
     const enterCodeDigit = (digit) => {
         const current = tutorialRef.current;
         if (current?.task === 'passwordlogic') {
+            playSound('tap');
             const step = current.step;
             setCodeLogic(p => {
                 const entry = p.entry.slice();
@@ -3689,6 +3704,9 @@ function App() {
             setTutorial({ ...current, step: nextSlot < CODE_LOGIC_TUTORIAL.secret.length ? { kind: 'slot', slot: nextSlot } : { kind: 'submit' } });
             return;
         }
+        // 提示期间输入被锁，按了也不出声。
+        if (!codeLogic.puzzle || codeLogic.feedback) return;
+        playSound('tap');
         setCodeLogic(p => {
             if (!p.puzzle || p.feedback) return p;
             const entry = p.entry.slice();
@@ -3704,6 +3722,8 @@ function App() {
     };
 
     const deleteCodeDigit = () => {
+        if (!codeLogic.puzzle || codeLogic.feedback) return;
+        playSound('tap');
         setCodeLogic(p => {
             if (!p.puzzle || p.feedback) return p;
             const entry = p.entry.slice();
@@ -3720,7 +3740,7 @@ function App() {
     const nextCodeLogicPuzzle = () => {
         const codeLength = codeLogic.puzzle ? codeLogic.puzzle.codeLength : 3;
         const exclude = codeLogic.puzzle ? codeLogic.puzzle.secret.join('') : null;
-        const puzzle = window.PFLGameLogic.codeLogic.generate(codeLength, exclude);
+        const puzzle = window.PFLGameLogic.codeLogic.next(codeLength, exclude); // 无限模式换题也取现成的
         setCodeLogic(p => ({
             ...p,
             puzzle,
@@ -4234,11 +4254,42 @@ function App() {
 
         if (view !== 'result') {
             setAnimatedScore(0);
+            setCodeResultEase(0); // 下次进结算页时四个数从 0 起，不先闪一下终值
             return;
         }
 
         const targetScore = Math.max(0, Math.round(lastScore || 0));
-        if (!targetScore || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+        const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
+        // 密码推理（与 iOS PasswordLogicResult 一致）：进入即播完成音；四个数字一起从 0 滚到终值，
+        // 固定 720ms 三次缓出，没有滴答音。分数为 0 时其他三个数照样滚。
+        if (lastRunStats?.task === 'passwordlogic' && mode !== 'daily') {
+            playSound('complete');
+            if (reduceMotion) {
+                setCodeResultEase(1);
+                setAnimatedScore(targetScore);
+                return;
+            }
+            const codeStartedAt = performance.now();
+            const codeTick = (now) => {
+                const progress = Math.min(1, (now - codeStartedAt) / 720);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                setCodeResultEase(eased);
+                setAnimatedScore(Math.round(targetScore * eased));
+                resultScoreFrame.current = progress < 1 ? requestAnimationFrame(codeTick) : null;
+            };
+            setCodeResultEase(0);
+            setAnimatedScore(0);
+            resultScoreFrame.current = requestAnimationFrame(codeTick);
+            return () => {
+                if (resultScoreFrame.current) {
+                    cancelAnimationFrame(resultScoreFrame.current);
+                    resultScoreFrame.current = null;
+                }
+            };
+        }
+
+        if (!targetScore || reduceMotion) {
             setAnimatedScore(targetScore);
             setTimeout(() => playSound(mode === 'daily' ? 'daily' : 'complete'), 120);
             return;
@@ -5737,7 +5788,7 @@ function App() {
 
             {isGameView && (
                 <div className="game-screen flex-1 flex flex-col">
-                    <div className="game-topbar h-14 px-4 flex-shrink-0 grid grid-cols-[1fr_auto_1fr] items-center bg-white border-b border-slate-100">
+                    <div className="game-topbar h-14 px-4 flex-shrink-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center bg-white border-b border-slate-100">
                         <div className="flex justify-start">
                             <button onClick={() => {
                                 playSound('tap');
@@ -5749,7 +5800,9 @@ function App() {
                                     setView('home');
                                     return;
                                 }
-                                if (mode === 'infinite') {
+                                // 无限模式返回即结算；密码推理例外：返回键直接退出、不结算不记录（与 iOS 一致），
+                                // 想结算要点顶栏的「结束本次训练」。
+                                if (mode === 'infinite' && view !== 'passwordlogic') {
                                     endGame(score);
                                     return;
                                 }
@@ -5773,18 +5826,56 @@ function App() {
                             }} className="game-back-button text-slate-900" aria-label={isEnglish ? 'Back' : '返回'}><Icon name="chevron-left" className="w-[18px] h-[18px]" /></button>
                         </div>
                         <div className="text-center">
-                            <div className={`text-[9px] font-black brand-text ${mode === 'daily' ? 'text-emerald-500' : mode === 'infinite' ? 'text-sky-500' : 'text-indigo-500'}`}>{mode === 'comp' ? ui.arenaMode : mode === 'daily' ? ui.dailyTitle : mode === 'infinite' ? ui.infiniteMode : ui.training}</div>
+                            {/* 模式小标题：与 iOS 各 Flow 的顶栏一致——不转大写，训练/无限/每日各自的颜色；
+                                密码推理任何模式都写「训练 / TRAINING」，竞技写「竞技模式 / ARENA MODE」。 */}
+                            <div className={`game-topbar-eyebrow ${mode === 'daily' && view !== 'passwordlogic' ? 'is-daily' : mode === 'infinite' && view !== 'passwordlogic' ? 'is-endless' : 'is-training'}`}>{
+                                view === 'passwordlogic'
+                                    ? (isEnglish ? 'TRAINING' : '训练')
+                                    : mode === 'comp'
+                                        ? (isEnglish ? 'ARENA MODE' : '竞技模式')
+                                        : mode === 'daily'
+                                            ? ui.dailyTitle
+                                            : mode === 'infinite'
+                                                ? (isEnglish ? 'Endless' : '无限模式')
+                                                : (isEnglish ? 'Training' : '训练')
+                            }</div>
                             <div className="text-sm font-bold">{mode === 'comp' ? ui.arenaShortTitle : getTaskTitle(view)}</div>
-                            {mode !== 'comp' && mode !== 'daily' && mode !== 'infinite' && TASK_DATA[view] && (
-                                <div className="text-[9px] font-black text-slate-400 font-mono">{ui.taskBest} {history.taskBestScores?.[view] || 0}</div>
-                            )}
-                            {mode === 'infinite' && view === 'passwordlogic' && (
-                                <div className="text-[9px] font-black text-slate-400 font-mono">{ui.codePuzzle.replace('{n}', codeLogic.solved + 1)}</div>
+                            {/* 历史最高：只在基础/进阶显示，标签和数字之间两个空格；密码推理顶栏没有这一行（iOS 相同）。 */}
+                            {mode !== 'comp' && mode !== 'daily' && mode !== 'infinite' && view !== 'passwordlogic' && TASK_DATA[view] && (
+                                <div className="text-[9px] font-black text-slate-400 font-mono whitespace-pre">{`${ui.taskBest}  ${history.taskBestScores?.[view] || 0}`}</div>
                             )}
                         </div>
-                        <div className="flex items-center justify-end gap-3">
-                            <div className={`text-xs font-mono font-bold px-2 py-1 rounded ${(isError || timerFlash) ? 'bg-red-500 text-white' : 'bg-slate-100'} ${codeTutorialStep ? 'invisible' : ''}`}>{view === 'passwordlogic' ? `${ui.codeElapsed} ${codeLogic.elapsed}s` : mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
-                            <div className="font-mono text-xl font-black text-indigo-600">{score}</div>
+                        {/* 右侧挤不下时（密码推理无限模式四样东西并排），只让「结束本次训练」省略，其余不缩。 */}
+                        <div className="flex items-center justify-end gap-3 whitespace-nowrap min-w-0">
+                            {view === 'passwordlogic' ? (
+                                <>
+                                    {/* 无限模式：第 n 题胶囊放在右侧（iOS puzzleProgressPill）。 */}
+                                    {mode === 'infinite' && (
+                                        <div className="code-topbar-puzzle-pill">{(() => {
+                                            // 答对后的 560ms 提示期间还停在本题，换题后才 +1（iOS roundIndex 在换题时才加）。
+                                            const n = codeLogic.solved + (codeLogic.feedback === 'correct' ? 0 : 1);
+                                            return isEnglish ? `Puzzle ${n}` : `第 ${n} 题`;
+                                        })()}</div>
+                                    )}
+                                    {/* 教学期间不显示已用时间（表还没开始走）。 */}
+                                    {tutorialTask !== 'passwordlogic' && (
+                                        <div className="game-topbar-timer code-topbar-elapsed">
+                                            <span>{ui.codeElapsed}</span>
+                                            <strong>{codeLogic.elapsed}s</strong>
+                                        </div>
+                                    )}
+                                    {/* 结束本次训练：只在无限模式、且至少解出一题后出现；点了就结算。 */}
+                                    {mode === 'infinite' && codeLogic.solved > 0 && tutorialTask !== 'passwordlogic' && (
+                                        <button type="button" className="code-topbar-end-button" onClick={() => {
+                                            playSound('tap');
+                                            endGame(score);
+                                        }}>{isEnglish ? 'End session' : '结束本次训练'}</button>
+                                    )}
+                                </>
+                            ) : (
+                                <div className={`game-topbar-timer ${(isError || timerFlash) ? 'is-error' : ''}`}>{mode === 'infinite' ? '∞' : `${timeLeft}s`}</div>
+                            )}
+                            <div className="font-mono text-xl font-black text-indigo-600 flex-shrink-0">{score}</div>
                         </div>
                     </div>
                     <div className="game-stage flex-1 flex items-center justify-center p-6">
@@ -5901,7 +5992,8 @@ function App() {
                                                 ? (isEnglish ? `Memory ${nback.roundNumber}/2` : `记忆阶段 ${nback.roundNumber}/2`)
                                                 : (isEnglish ? 'Memorize' : '记忆阶段'))
                                             : (isEnglish
-                                                ? `Round ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)}`
+                                                // 英文：训练/每日写 Question N；竞技沿用 Round N（iOS ArenaTrainingFlow 同样如此）。
+                                                ? `${mode === 'comp' ? 'Round' : 'Question'} ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)}`
                                                 : `第 ${nback.roundNumber - (isChallengeDifficulty ? 2 : 1)} 题`)}
                                     </div>
                                     <div className={`nback-prompt-stack ${isNbackWarmupRound ? 'is-warmup' : ''}`}>
@@ -5930,11 +6022,11 @@ function App() {
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-match');
                                             handleNbackAnswer(true, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold shadow-lg transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 shadow-none' : 'bg-red-500 text-white shadow-none') : 'bg-indigo-600 text-white'}`}>{ui.match}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-match' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'match' ? (answerFeedback.status === 'correct' ? 'is-feedback-correct bg-emerald-500 text-white scale-105' : 'is-feedback-wrong bg-red-500 text-white') : 'bg-indigo-600 text-white shadow-lg'}`}>{ui.match}</button>
                                         <button disabled={!!answerFeedback} onClick={(event) => {
                                             pulseControl('nback-different');
                                             handleNbackAnswer(false, event);
-                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && !nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'bg-emerald-500 text-white scale-105 shadow-none' : 'bg-red-500 text-white shadow-none') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
+                                        }} className={`nback-choice-button py-5 rounded-2xl font-bold transition-all duration-200 disabled:pointer-events-none ${tutorialTask === 'nback' && !answerFeedback && !nback.isMatch ? 'is-tutorial-target' : ''} ${controlPulse === 'nback-different' ? 'is-tap-pulsing' : ''} ${answerFeedback?.target === 'different' ? (answerFeedback.status === 'correct' ? 'is-feedback-correct bg-emerald-500 text-white scale-105' : 'is-feedback-wrong bg-red-500 text-white') : 'bg-slate-200 text-slate-600'}`}>{ui.different}</button>
                                     </div>
                                 ) : (
                                     <button disabled={!!answerFeedback} onClick={() => {
@@ -6157,15 +6249,15 @@ function App() {
                         {view === 'passwordlogic' && codeLogic.puzzle && (() => {
                             const codeLength = codeLogic.puzzle.codeLength;
                             const feedbackCopy = codeLogic.feedback === 'incomplete'
-                                ? { text: codeLength === 4 ? ui.codeIncomplete4 : ui.codeIncomplete3, tone: 'bg-slate-400' }
+                                ? { text: codeLength === 4 ? ui.codeIncomplete4 : ui.codeIncomplete3, tone: 'is-incomplete' }
                                 : codeLogic.feedback === 'wrong'
-                                    ? { text: ui.codeWrong, tone: 'bg-rose-500' }
+                                    ? { text: ui.codeWrong, tone: 'is-wrong' }
                                     : codeLogic.feedback === 'correct'
                                         ? {
                                             text: mode === 'infinite'
                                                 ? ui.codePuzzleDone.replace('{n}', codeLogic.solved)
                                                 : ui.codeComplete,
-                                            tone: 'bg-emerald-500'
+                                            tone: 'is-correct'
                                         }
                                         : null;
                             const keypadButton = (label, onClick, { primary = false, wide = false, action = null, highlighted = false } = {}) => (
@@ -6173,11 +6265,11 @@ function App() {
                                     key={label}
                                     onClick={() => {
                                         if (action && !codeTutorialAllows(action)) return;
-                                        // 教学里提交只播答对音，不叠点击音（iOS 相同）
-                                        if (!(action?.type === 'submit' && codeTutorialStep)) playSound('tap');
+                                        // 按键音由各自的处理函数在输入被接受后才播（iOS 相同）：
+                                        // 数字、删除播点击音；提交不播点击音，只播答对/答错音；提示期间被锁的按键不出声。
                                         onClick();
                                     }}
-                                    className={`h-12 rounded-2xl font-black active:scale-95 transition-transform flex items-center justify-center ${wide ? 'text-xs' : 'text-xl font-mono'} ${primary ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-800 border border-slate-200'} ${highlighted ? 'is-code-tutorial-highlight' : ''}`}
+                                    className={`code-key active:scale-95 transition-transform ${wide ? 'is-label' : ''} ${primary ? 'is-primary' : ''} ${highlighted ? 'is-code-tutorial-highlight' : ''}`}
                                 >{label}</button>
                             );
                             return (
@@ -6204,19 +6296,19 @@ function App() {
                                         </div>
                                     )}
 
-                                    <div className="flex-shrink-0 flex justify-center gap-2.5 mt-3">
+                                    <div className={`code-slot-row flex-shrink-0 flex justify-center mt-3 ${codeLength === 4 ? 'is-four' : ''}`}>
                                         {codeLogic.entry.map((digit, index) => (
                                             <button
                                                 key={index}
                                                 onClick={() => tapCodeSlot(index)}
-                                                className={`${codeLength === 4 ? 'w-[52px]' : 'w-16'} h-[62px] rounded-2xl bg-white flex items-center justify-center text-3xl font-black font-mono transition-colors ${codeTutorialStep?.kind === 'slot' && codeTutorialStep.slot === index ? 'is-code-tutorial-highlight' : index === codeLogic.selected ? 'border-2 border-indigo-600' : 'border border-slate-200'} ${digit === null ? 'text-slate-300' : 'text-slate-800'}`}
+                                                className={`code-slot ${codeLength === 4 ? 'is-four' : ''} ${codeTutorialStep?.kind === 'slot' && codeTutorialStep.slot === index ? 'is-code-tutorial-highlight' : index === codeLogic.selected ? 'is-selected' : ''} ${digit === null ? 'is-empty' : ''}`}
                                             >{digit === null ? '–' : digit}</button>
                                         ))}
                                     </div>
 
                                     <div className="flex-shrink-0 h-7 mt-2 flex items-center justify-center">
                                         {feedbackCopy && (
-                                            <span className={`px-3 h-6 rounded-full text-[11px] font-black text-white flex items-center ${feedbackCopy.tone}`}>{feedbackCopy.text}</span>
+                                            <span className={`code-feedback-pill ${feedbackCopy.tone}`}>{feedbackCopy.text}</span>
                                         )}
                                     </div>
 
@@ -6231,13 +6323,13 @@ function App() {
                                         ))}
                                     </div>
 
-                                    <div className="flex-shrink-0 mt-2 space-y-1.5">
+                                    <div className="code-keypad flex-shrink-0 mt-2">
                                         {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((row, rowIndex) => (
-                                            <div key={rowIndex} className="grid grid-cols-3 gap-1.5">
+                                            <div key={rowIndex} className="code-keypad-row">
                                                 {row.map(digit => keypadButton(String(digit), () => enterCodeDigit(digit), { action: { type: 'digit', digit }, highlighted: codeTutorialStep?.kind === 'digit' && codeTutorialStep.digit === digit }))}
                                             </div>
                                         ))}
-                                        <div className="grid grid-cols-3 gap-1.5">
+                                        <div className="code-keypad-row">
                                             {keypadButton(ui.codeDelete, deleteCodeDigit, { wide: true, action: { type: 'delete' } })}
                                             {keypadButton('0', () => enterCodeDigit(0), { action: { type: 'digit', digit: 0 }, highlighted: codeTutorialStep?.kind === 'digit' && codeTutorialStep.digit === 0 })}
                                             {keypadButton(ui.codeSubmit, submitCodeLogic, { primary: true, wide: true, action: { type: 'submit' }, highlighted: codeTutorialStep?.kind === 'submit' })}
@@ -6280,6 +6372,7 @@ function App() {
                 // 密码推理一题 40~100 分，套不上按几百分写的五档评语，
                 // 也没有「正确率」可言——它的指标和 iOS 结果页保持一致。
                 const isCodeLogicResult = lastRunStats?.task === 'passwordlogic';
+                const isCodeLogicTraining = isCodeLogicResult && !isDailyResult;
                 const resultPresentation = getResultPresentation({ isDailyResult, resultAccuracy });
                 // 竞技专属结算页（iOS ArenaResult）：双剑图标、固定副标题、不出评语和新纪录奖杯，
                 // 指标不带「次」，按钮回竞技首页（mode 仍是 comp）。分数滚动沿用通用的 animatedScore。
@@ -6312,16 +6405,37 @@ function App() {
                         </div>
                     );
                 }
+                // N-Back / SET / 神经元 / 密码推理的结算图标是固定的（iOS 各自的 Lucide 图标），
+                // 舒尔特和 Stroop 仍按表现换图标；破纪录照旧显示奖杯。每日、竞技不走这里。
+                const fixedResultIcon = (!isDailyResult && mode !== 'comp' && !lastRunStats?.isImproved)
+                    ? ({ nback: 'brain', setgame: 'shapes', neuroncount: 'binary', passwordlogic: 'lock-keyhole' })[lastRunStats?.task] || null
+                    : null;
+                const resultOrbClass = !fixedResultIcon
+                    ? resultPresentation.className
+                    : isCodeLogicResult
+                        ? 'is-fixed-icon is-codelogic'
+                        // 图标颜色跟评语颜色；N-Back 正确率 ≥80 时底色用浅靛蓝，其余用页面底色。
+                        : `is-fixed-icon ${feedback.color} ${lastRunStats?.task === 'nback' && resultAccuracy >= 80 ? 'is-fixed-accent' : ''}`;
+                // 密码推理用时格式（iOS timeText）：中文「M分 S秒」/「S 秒」，英文「M:SS」/「Ss」。
+                const formatCodeTime = (seconds) => {
+                    const minutes = Math.floor(seconds / 60);
+                    const rest = seconds % 60;
+                    if (!isEnglish) return minutes > 0 ? `${minutes}分 ${rest}秒` : `${rest} 秒`;
+                    return minutes > 0 ? `${minutes}:${String(rest).padStart(2, '0')}` : `${rest}s`;
+                };
+                // 用时取局内的已用时间：iOS 在接受答案那一刻停表，不含答对后 560ms 的提示。
+                const codeElapsedSeconds = codeLogic.elapsed || resultDuration;
+                const codeCountUp = (value) => Math.round((value || 0) * codeResultEase);
                 return (
                     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
-                        <div className={`result-icon-orb ${resultPresentation.className}`}>
-                            {/* 每日结算用 iOS 的绿色勾；其他结算图标不变 */}
-                            {isDailyResult ? <DailyResultMark /> : <Icon name={resultPresentation.icon} className="w-10 h-10" />}
+                        <div className={`result-icon-orb ${resultOrbClass}`}>
+                            {/* 每日结算用 iOS 的绿色勾；其他按游戏用固定图标或按表现换图标 */}
+                            {isDailyResult ? <DailyResultMark /> : <Icon name={fixedResultIcon || resultPresentation.icon} className="w-10 h-10" />}
                         </div>
-                        <div className="text-[10px] font-black brand-text text-slate-400 mb-1">{isDailyResult ? ui.dailyFinishedTitle : ui.resultTitle}</div>
-                        <div className={`result-score-counter text-6xl font-black mb-6 font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{animatedScore}</div>
+                        <div className="text-[10px] font-black brand-text text-slate-400 mb-1">{isDailyResult ? ui.dailyFinishedTitle : isCodeLogicTraining ? (isEnglish ? 'TRAINING COMPLETE · SCORE' : '训练结束 · 最终得分') : ui.resultTitle}</div>
+                        <div className={`result-score-counter text-6xl font-black ${isCodeLogicTraining ? 'mb-4' : 'mb-6'} font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{animatedScore}</div>
                         {isCodeLogicResult ? (
-                            <div className="text-sm font-black text-slate-600 mb-5 max-w-[240px]">{ui.codeResultLine}</div>
+                            <div className="text-[13px] font-bold text-slate-500 mb-[22px] max-w-[240px]">{ui.codeResultLine}</div>
                         ) : (
                             <>
                                 <div className={`text-xl font-black mb-1 ${isDailyResult ? 'text-emerald-600' : feedback.color}`}>{isDailyResult ? `${ui.dailyStreak} ${dailyStreak} ${ui.dailyDays}` : feedback.label}</div>
@@ -6333,15 +6447,15 @@ function App() {
                                 <>
                                     <div className="result-metric">
                                         <span>{ui.codeResultCompleted}</span>
-                                        <strong>{lastRunStats?.correct || 0}</strong>
+                                        <strong>{codeCountUp(lastRunStats?.correct)}</strong>
                                     </div>
                                     <div className="result-metric">
                                         <span>{ui.codeResultTime}</span>
-                                        <strong>{resultDuration}s</strong>
+                                        <strong>{formatCodeTime(codeCountUp(codeElapsedSeconds))}</strong>
                                     </div>
                                     <div className="result-metric">
                                         <span>{ui.codeResultIncorrect}</span>
-                                        <strong>{lastRunStats?.incorrect || 0}</strong>
+                                        <strong>{codeCountUp(lastRunStats?.incorrect)}</strong>
                                     </div>
                                 </>
                             ) : (
@@ -6387,7 +6501,7 @@ function App() {
                                 <span>{dailyParityText.resultNote}</span>
                             </div>
                         )}
-                        {!isDailyResult && <div className="mb-8" />}
+                        {!isDailyResult && <div className={isCodeLogicTraining ? 'mb-1' : 'mb-8'} />}
                         {isDailyResult ? (
                             <div className="w-full max-w-sm flex flex-col gap-3">
                                 <button onClick={() => { playSound('tap'); setMode('daily'); setView('home'); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.dailySeeTomorrow}</button>
@@ -6395,7 +6509,7 @@ function App() {
                                 <button onClick={() => setDailyGateOpen(true)} className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black">{ui.dailyPracticeAgain}</button>
                             </div>
                         ) : (
-                            <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
+                            <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{isCodeLogicTraining ? (isEnglish ? 'Back to Training' : '返回训练') : ui.backHome}</button>
                         )}
                     </div>
                 );

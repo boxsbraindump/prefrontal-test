@@ -440,6 +440,61 @@
         return report;
     }
 
+    // 题目预生成（与 iOS CodeLogicPuzzleSupply 一致）：三位、四位各留 3 道现成的题，
+    // 取题时只拿已经生成好的，不在出题那一刻现算；取完立刻在空闲时补货。
+    // 浏览器里没有后台线程，所以补货拆成每个空闲片只生成 1 道，避免在安卓 WebView 上一次卡太久。
+    var CODE_LOGIC_BUFFER_DEPTH = 3;
+    var codeLogicBuffers = { 3: [], 4: [] };
+    var codeLogicRefilling = { 3: false, 4: false };
+
+    function scheduleIdle(callback) {
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(callback, { timeout: 500 });
+        } else {
+            setTimeout(callback, 0);
+        }
+    }
+
+    function refillCodeLogic(codeLength) {
+        if (codeLogicRefilling[codeLength]) return;
+        if ((codeLogicBuffers[codeLength] || []).length >= CODE_LOGIC_BUFFER_DEPTH) return;
+        codeLogicRefilling[codeLength] = true;
+        var step = function () {
+            var buffer = codeLogicBuffers[codeLength] || (codeLogicBuffers[codeLength] = []);
+            if (buffer.length < CODE_LOGIC_BUFFER_DEPTH) {
+                try {
+                    buffer.push(generateCodeLogicPuzzle(codeLength));
+                } catch (error) {
+                    // 生成失败不影响游戏：取题时会退回题库。
+                }
+            }
+            if (buffer.length < CODE_LOGIC_BUFFER_DEPTH) {
+                scheduleIdle(step);
+            } else {
+                codeLogicRefilling[codeLength] = false;
+            }
+        };
+        scheduleIdle(step);
+    }
+
+    function prewarmCodeLogic() {
+        refillCodeLogic(3);
+        refillCodeLogic(4);
+    }
+
+    // 永不阻塞、永不失败：有现成的题就拿（跳过密码等于 excludeSecret 的那道），
+    // 缓冲恰好空了就从题库里抽一道，然后在后台补满。excludeSecret 是 join('') 后的字符串。
+    function nextCodeLogicPuzzle(codeLength, excludeSecret) {
+        var buffer = codeLogicBuffers[codeLength] || (codeLogicBuffers[codeLength] = []);
+        var index = -1;
+        for (var i = 0; i < buffer.length; i++) {
+            if (!excludeSecret || buffer[i].secret.join('') !== excludeSecret) { index = i; break; }
+        }
+        var taken = index >= 0 ? buffer.splice(index, 1)[0] : null;
+        refillCodeLogic(codeLength);
+        return taken || codeLogicFallback(codeLength, excludeSecret);
+    }
+
     window.PFLGameLogic = {
         createNbackRound,
         codeLogic: {
@@ -447,6 +502,8 @@
             solutions: codeLogicSolutions,
             makePuzzle: makeCodeLogicPuzzle,
             generate: generateCodeLogicPuzzle,
+            next: nextCodeLogicPuzzle,
+            prewarm: prewarmCodeLogic,
             bank: codeLogicBank,
             clueText: codeLogicClueText,
             difficultyBand: codeLogicDifficultyBand,
@@ -454,4 +511,7 @@
             selfTest: codeLogicSelfTest,
         },
     };
+
+    // 加载即开始预热，等玩家打开密码推理时缓冲早已备好（iOS 在 App 启动时调用 prewarm）。
+    prewarmCodeLogic();
 })();
