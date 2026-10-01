@@ -289,57 +289,436 @@ const TASK_TRANSLATIONS = {
         title: "Schulte Grid",
         homeBasic: "Focus and visual span",
         homeHard: "Blind-spot mode",
-        guide: {
-            play: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Tap the numbers from <span class="text-blue-600 font-bold">1 to 25</span> in order.</p><div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100/50 text-[11px] text-slate-500">Tip: keep your eyes near the center and use peripheral vision to catch nearby numbers.</div></div>`,
-            playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm"><span class="text-amber-600 font-bold">Advanced:</span> numbers disappear immediately after you tap them.</p><div class="bg-amber-50 p-4 rounded-3xl border border-amber-100 text-[11px] text-amber-700 leading-relaxed">Remember which positions are already cleared so you do not waste search time.</div></div>`
-        }
     },
     stroop: {
         title: "Stroop Test",
         homeBasic: "Inhibition control",
         homeHard: "Double conflict",
-        guide: {
-            play: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Ignore the word meaning. Choose the button that matches the word's <span class="text-rose-600 font-bold">actual color</span>.</p><div class="bg-rose-50/50 p-3 rounded-2xl border border-rose-100/50 text-[11px] text-slate-500">Your brain wants to read the word first. Force attention onto the color.</div></div>`,
-            playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm"><span class="text-rose-600 font-bold">Advanced:</span> color blocks disappear. Tap the written color name instead.</p><div class="bg-rose-50 p-4 rounded-3xl border border-rose-100 text-[11px] text-rose-700 leading-relaxed">If the word RED is shown in blue, choose the button labeled BLUE.</div></div>`
-        }
     },
     nback: {
         title: "N-Back Memory",
         homeBasic: "1-Back mode",
         homeHard: "2-Back challenge",
-        guide: {
-            play: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Decide whether the current number matches the number from <span class="text-indigo-600 font-bold">1 step ago</span>.</p><div class="font-mono tracking-widest text-center py-2 bg-white rounded-lg border border-slate-100 text-[11px]">2 → 5 → <span class="bg-green-100 px-1 rounded text-green-700 font-bold">5</span> = Match</div></div>`,
-            playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Decide whether the current number matches the number from <span class="text-purple-600 font-bold">2 steps ago</span>.</p><p class="text-[10px] text-center text-slate-400">Skip one number between the comparison and the current item.</p></div>`
-        }
     },
     setgame: {
         title: "SET Logic",
         homeBasic: "Logical processing",
         homeHard: "Adds fill dimension",
-        guide: {
-            play: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Find 3 cards where each property is either <span class="text-indigo-600 font-bold">all the same</span> or <span class="text-indigo-600 font-bold">all different</span>.</p><div class="bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50 text-[10px] text-slate-500">Colors and shapes are both checked. Three circles in three different colors can still be valid.</div></div>`,
-            playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-[11px]">Advanced mode also checks <span class="text-green-600 font-bold">fill level</span>.</p><div class="bg-green-50 p-3 rounded-2xl border border-green-100 text-[10px] text-green-700">A valid set must satisfy the same/all-different rule across every active property.</div></div>`
-        }
     },
     neuroncount: {
         title: "Neuron Counting",
         homeBasic: "Target count: shape + color",
         homeHard: "More distractions",
-        guide: {
-            play: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Count targets: <span class="text-amber-600 font-bold">same shape and color</span>.</p><div class="bg-slate-50 p-4 rounded-3xl flex flex-col items-center border"><div class="flex gap-2 mb-3"><div class="w-6 h-6 rounded-full bg-amber-500"></div><div class="w-6 h-6 bg-slate-300"></div><div class="w-6 h-6 rounded-full bg-amber-500"></div></div><p class="text-[10px] text-slate-400">Count to 2, then tap the button twice</p></div></div>`,
-            playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">Advanced adds more similar distractors and moving items.</p><p class="text-slate-600 font-medium text-sm">Count targets: <span class="text-amber-600 font-bold">same shape and color</span>.</p></div>`
-        }
     },
     passwordlogic: {
         title: "Code Logic",
         homeBasic: "Three-digit deduction",
         homeHard: "Four-digit deduction",
-        guide: {
-            play: `<div class="space-y-3"><p class="text-slate-600 font-medium text-sm">Using <span class="font-mono font-black text-indigo-600">5 3 1</span> as the example code, here is how to read each clue:</p><div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-indigo-600 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 digit is correct and in the correct position</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-rose-500 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 digit is correct, but in the wrong position</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">7</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">6</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">4</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">No digits are correct</span></div></div><p class="text-[10px] text-slate-400 leading-relaxed">Colors are only used in this example; read the clue text during play.</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">Read all four clues together. Each puzzle has one answer. Digits do not repeat, and the first digit is never 0.</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">Each incorrect submission costs 10 points; edit and submit again.</p></div>`,
-            playHard: `<div class="space-y-3"><p class="text-slate-600 font-medium text-sm">Using <span class="font-mono font-black text-indigo-600">5 3 1 7</span> as the example code, here is how to read each clue:</p><div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-indigo-600 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 digit is correct and in the correct position</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-rose-500 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 digit is correct, but in the wrong position</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">6</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">4</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">2</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">No digits are correct</span></div></div><p class="text-[10px] text-slate-400 leading-relaxed">Colors are only used in this example; read the clue text during play.</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">Read all four clues together. Each puzzle has one answer. Digits do not repeat, and the first digit is never 0.</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">Each incorrect submission costs 10 points; edit and submit again.</p></div>`
+    }
+};
+
+// --- 训练首页 i 按钮打开的规则弹窗 ---
+// 对齐已发布的 iOS 1.0.2（a43b5fe）：各游戏 *TrainingFlow.swift 里的 *RulesSheet。
+// 文案逐字照搬 iOS；示意图用下面的小组件画，不再用整段 HTML 字符串。
+// 档位：只有「进阶」显示进阶版，基础和无限都显示基础版（与 iOS presentedRulesTier 相同）。
+// rule 里的字符串原样显示，{ hl, tone } 是加粗高亮的一段。
+const RULES_SHEET = {
+    schulte: {
+        subtitle: 'Schulte Grid', icon: 'grid', tone: 'schulte', tipTone: 'schulte', demoSpace: 12,
+        basic: {
+            zh: { lead: '提升视觉搜索效率与专注力', rule: ['按照数字 1 至 25 的顺序，依次点击方格中的数字。'], demo: 'schulte-basic', tip: '💡  秘诀：尽量保持视线中心在网格中央，利用余光捕捉周围数字。' },
+            en: { lead: 'Train visual search and focus', rule: ['Tap numbers from 1 to 25 in order.'], demo: 'schulte-basic', tip: '💡 Tip: keep your gaze near the centre of the grid and catch the surrounding numbers with your peripheral vision.' }
+        },
+        advanced: {
+            zh: { lead: '盲点模式：记住已经点击的位置', rule: ['⚠️ 进阶规则：点过的数字会立即消失。'], demo: 'schulte-blind', tip: '💡 记住已清空的位置，避免在空位上浪费搜索时间。' },
+            en: { lead: 'Blind-spot mode: remember cleared positions', rule: ['Advanced: tapped numbers disappear immediately.'], demo: 'schulte-blind', tip: '💡 Remember cleared positions so empty cells do not cost search time.' }
+        }
+    },
+    stroop: {
+        subtitle: 'Stroop Test', icon: 'palette', tone: 'stroop', tipTone: 'stroop',
+        basic: {
+            zh: { lead: '练习抑制本能反应的冲动', rule: ['忽略文字含义，点击与文字物理颜色相符的按钮。'], demo: 'stroop-basic', tip: '💡  注意：你的大脑会下意识想读字，请强制关注颜色本身！' },
+            en: { lead: 'Practice inhibiting automatic responses', rule: ['Ignore the word meaning. Choose its actual color.'], demo: 'stroop-basic', tip: '💡 Careful: your brain wants to read the word. Force your attention onto the colour itself.' }
+        },
+        advanced: {
+            zh: { lead: '双重语义冲突', rule: ['⚠️ 进阶规则：色块消失，改为点击对应的文字内容。'], demo: 'stroop-advanced', tip: '💡 看到蓝色的“红”字时，找出写着“蓝”的按钮。' },
+            en: { lead: 'Double conflict', rule: ['Advanced: color dots disappear. Tap the written color name instead.'], demo: 'stroop-advanced', tip: '💡 If RED is blue, choose the button labeled BLUE.' }
+        }
+    },
+    // N-Back 没有提示框，示意图后面直接是按钮。
+    nback: {
+        subtitle: 'N-Back Task', icon: 'brain', tone: 'nback',
+        basic: {
+            zh: { lead: '训练大脑不断更新暂存信息的能力', rule: ['判断当前数字，是否与 ', { hl: '前1步', tone: 'indigo' }, ' 出现的数字相同。'], note: '答错扣除 3 秒。', demo: 'nback-one' },
+            en: { lead: 'Train working-memory updating', rule: ['Does the current number match the one ', { hl: '1 step back', tone: 'indigo' }, '?'], note: 'Wrong answers cost 3 seconds.', demo: 'nback-one' }
+        },
+        advanced: {
+            zh: { lead: '2-Back 双重难度', rule: ['判断当前数字，是否与 ', { hl: '前第 2 步', tone: 'indigo' }, ' 出现的数字相同。'], note: '答错扣除 3 秒。', demo: 'nback-two' },
+            en: { lead: '2-Back challenge', rule: ['Does the current number match the one ', { hl: '2 steps back', tone: 'indigo' }, '?'], note: 'Wrong answers cost 3 seconds.', demo: 'nback-two' }
+        }
+    },
+    setgame: {
+        subtitle: 'Set Logic', icon: 'shapes', tone: 'set', tipTone: 'set',
+        basic: {
+            zh: { lead: '识别属性的全同与全异', rule: ['找出 3 张牌，使它们的颜色和形状满足：'], demo: 'set-basic', tip: '💡 即使形状完全一样（三个圆），只要颜色互不相同（红/蓝/绿），也成立！' },
+            en: { lead: 'Recognize same and different properties', rule: ['Find 3 cards whose colour and shape are each:'], demo: 'set-basic', tip: '💡 Even if the shapes are identical (three circles), it still counts as long as the colours are all different (red / blue / green).' }
+        },
+        advanced: {
+            zh: { lead: '填充度也必须全同或全异', rule: ['进阶模式下，填充度也必须符合全同或全异原则。'], demo: 'set-fill', tip: '↑ 填充度也必须符合全同或全异原则。' },
+            en: { lead: 'Fill level is also a SET property', rule: ['Advanced mode also checks fill level.'], demo: 'set-fill', tip: '↑ Fill level must also be all-same or all-different.' }
+        }
+    },
+    // 神经元计数也没有提示框；两档规则句相同，差别写在主旨句里。
+    neuroncount: {
+        subtitle: 'Neuron Counting', icon: 'binary', tone: 'neuron',
+        basic: {
+            zh: { lead: '在干扰中精确统计目标数量', rule: ['数出屏幕中 ', { hl: '形状和颜色都与目标相同', tone: 'amber' }, ' 的图形。'], demo: 'neuron-basic' },
+            en: { lead: 'Count targets accurately among distractions', rule: ['Count targets: ', { hl: 'same shape and color', tone: 'amber' }, '.'], demo: 'neuron-basic' }
+        },
+        advanced: {
+            zh: { lead: '更多相似干扰项与移动目标', rule: ['数出屏幕中 ', { hl: '形状和颜色都与目标相同', tone: 'amber' }, ' 的图形。'], demo: 'neuron-field' },
+            en: { lead: 'More similar distractors and moving items', rule: ['Count targets: ', { hl: 'same shape and color', tone: 'amber' }, '.'], demo: 'neuron-field' }
+        }
+    },
+    // 密码推理的头部和正文结构与其他五个不同（PasswordLogicRulesSheet）：副标题是档位名，按钮是「开始推理」。
+    passwordlogic: {
+        icon: 'lock-keyhole', tone: 'code', codeLogic: true,
+        zh: {
+            title: '密码推理', tiers: ['三位数字逻辑', '四位数字逻辑'], heading: '看懂线索的三种说法',
+            example: (code) => `以密码 ${code} 为例：`,
+            clues: ['1 个数字正确且位置正确', '1 个数字正确，但位置错误', '没有数字正确'],
+            colorNote: '颜色仅用于示例；正式题请以右侧线索文字为准。',
+            rules: ['四条线索要一起看；每题只有一个答案。数字不会重复，首位不会是 0。', '每次错误提交扣 10 分；可修改后再次提交。'],
+            button: '开始推理', label: '密码推理训练规则'
+        },
+        en: {
+            title: 'Code Logic', tiers: ['Three-digit deduction', 'Four-digit deduction'], heading: 'How to read each clue',
+            example: (code) => `Using ${code} as the example code:`,
+            clues: ['1 digit is correct and in the correct position', '1 digit is correct, but in the wrong position', 'No digits are correct'],
+            colorNote: 'Colors are only used in this example; read the clue text on the right during play.',
+            rules: ['Read all four clues together. Each puzzle has one answer. Digits do not repeat, and the first digit is never 0.', 'Each incorrect submission costs 10 points; edit and submit again.'],
+            button: 'Start reasoning', label: 'Code Logic training rules'
         }
     }
 };
+
+// 舒尔特：40×40 的圆角数字格；选中格蓝字、蓝色 10% 底、2px 蓝边。
+const RulesSchulteCell = ({ value, on }) => (
+    <div className={`rs-cell${on ? ' is-on' : ''}`}>{value}</div>
+);
+
+const RulesSchulteBasicDemo = () => (
+    <div className="rs-row rs-gap-8">
+        <RulesSchulteCell value="1" on />
+        <span className="rs-arrow">→</span>
+        <RulesSchulteCell value="2" />
+        <span className="rs-arrow">→</span>
+        <RulesSchulteCell value="3" />
+    </div>
+);
+
+// 舒尔特进阶：目标顺序 + 「已点（空）→ 当前 → 随后」三格。
+const RulesSchulteBlindDemo = ({ en }) => {
+    const cell = (value, caption) => (
+        <div className="rs-col rs-gap-4">
+            <RulesSchulteCell value={value} on={value === '2'} />
+            <span className="rs-caption">{caption}</span>
+        </div>
+    );
+    return (
+        <div className="rs-box rs-box-warning rs-col rs-gap-10">
+            <div className="rs-blind-order">{en ? 'Target order  1 → 2 → 3 … → 25' : '目标顺序  1 → 2 → 3 … → 25'}</div>
+            <div className="rs-row rs-gap-8">
+                {cell('', en ? 'cleared' : '已点')}
+                <span className="rs-arrow">→</span>
+                {cell('2', en ? 'next' : '当前')}
+                <span className="rs-arrow">→</span>
+                {cell('3', en ? 'then' : '随后')}
+            </div>
+        </div>
+    );
+};
+
+const RulesStroopBasicDemo = ({ en }) => (
+    <div className="rs-box rs-box-plain rs-col rs-gap-8">
+        <div className="rs-stroop-word">{en ? 'RED' : '红 色'}</div>
+        <div className="rs-row rs-gap-8">
+            <span className="rs-pill rs-pill-red">{en ? 'Tap RED (❌)' : '点击红色 (❌)'}</span>
+            <span className="rs-pill rs-pill-blue">{en ? 'Tap BLUE (✅)' : '点击蓝色 (✅)'}</span>
+        </div>
+    </div>
+);
+
+// Stroop 进阶：蓝色的「红色」+ 2×2 文字按钮，「蓝」为选中态。
+const RulesStroopAdvancedDemo = ({ en }) => {
+    const choices = [
+        { key: 'red', zh: '红', en: 'Red' },
+        { key: 'blue', zh: '蓝', en: 'Blue', on: true },
+        { key: 'green', zh: '绿', en: 'Green' },
+        { key: 'yellow', zh: '黄', en: 'Yellow' }
+    ];
+    return (
+        <div className="rs-box rs-box-danger rs-col rs-gap-10">
+            <div className="rs-stroop-word is-large">{en ? 'RED' : '红 色'}</div>
+            <div className="rs-stroop-grid">
+                {choices.map(choice => (
+                    <span key={choice.key} className={`rs-stroop-choice rs-c-${choice.key}${choice.on ? ' is-on' : ''}`}>{en ? choice.en : choice.zh}</span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// N-Back：40×40 数字格，variant 为 plain / bright（靛蓝）/ violet（紫）。
+const RulesNumber = ({ value, variant = 'plain' }) => (
+    <div className={`rs-num rs-num-${variant}`}>{value}</div>
+);
+
+const RulesNBackOneDemo = ({ en }) => (
+    <>
+        <div className="rs-box rs-box-page rs-pad-16 rs-row rs-gap-16">
+            <div className="rs-col rs-gap-4 rs-faded-40">
+                <RulesNumber value="7" />
+                <span className="rs-caption rs-caption-ink">{en ? '1 back' : '前1步'}</span>
+            </div>
+            <span className="rs-nback-eq">＝?</span>
+            <div className="rs-col rs-gap-4">
+                <RulesNumber value="7" variant="bright" />
+                <span className="rs-caption rs-caption-accent">{en ? 'Now' : '当前'}</span>
+            </div>
+        </div>
+        <div className="rs-nback-strip">
+            <span>2 → 5 →</span>
+            <span className="rs-nback-hit">5</span>
+            <span>{en ? '(tap!)' : '(点!)'}</span>
+        </div>
+    </>
+);
+
+const RulesNBackTwoDemo = ({ en }) => {
+    const item = (value, caption, emphasized) => (
+        <div className={`rs-col rs-gap-4${emphasized ? '' : ' rs-faded-20'}`}>
+            <RulesNumber value={value} variant={emphasized ? 'violet' : 'plain'} />
+            <span className="rs-caption rs-caption-violet">{caption}</span>
+        </div>
+    );
+    return (
+        <div className="rs-box rs-box-page rs-col rs-gap-10">
+            <div className="rs-row rs-gap-10">
+                {item('4', en ? 'compare' : '对比项', true)}
+                <span className="rs-hline" />
+                {item('9', en ? 'skip' : '跳过', false)}
+                <span className="rs-hline" />
+                {item('4', en ? 'current' : '当前', true)}
+            </div>
+            <div className="rs-nback-hint">{en ? 'Skip one number: match the one 2 steps back.' : '间隔一个数字，相同即点！'}</div>
+        </div>
+    );
+};
+
+const RulesSetBasicDemo = ({ en }) => (
+    <div className="rs-row rs-gap-12 rs-stretch">
+        <div className="rs-set-card">
+            <div className="rs-row rs-gap-4"><span className="rs-dot rs-dot-indigo" /><span className="rs-dot rs-dot-indigo" /><span className="rs-dot rs-dot-indigo" /></div>
+            <span className="rs-set-label">{en ? 'All the same' : '全部相同'}</span>
+        </div>
+        <div className="rs-set-card">
+            <div className="rs-row rs-gap-4"><span className="rs-dot rs-dot-red" /><span className="rs-dot rs-dot-blue" /><span className="rs-dot rs-dot-green" /></div>
+            <span className="rs-set-label">{en ? 'All different' : '全部不同'}</span>
+        </div>
+    </div>
+);
+
+// SET 进阶：三张小卡，绿色方块不透明度 1 / 0.30 / 0.10（照 iOS 示意图）。
+const RulesSetFillDemo = ({ en }) => (
+    <div className="rs-box rs-box-success rs-col rs-gap-9">
+        <div className="rs-row rs-gap-10">
+            {[1, 0.3, 0.1].map(opacity => (
+                <div key={opacity} className="rs-fill-card"><span style={{ opacity }} /></div>
+            ))}
+        </div>
+        <div className="rs-fill-caption">{en ? 'Solid · light fill · faint fill' : '实心 · 浅填充 · 淡填充'}</div>
+    </div>
+);
+
+const RulesNeuronBasicDemo = ({ en }) => (
+    <div className="rs-box rs-box-page rs-pad-16 rs-col rs-gap-12">
+        <div className="rs-row rs-gap-8">
+            <span className="rs-glyph rs-glyph-circle rs-c-amber" style={{ width: 24, height: 24 }} />
+            <span className="rs-neuron-square" />
+            <span className="rs-glyph rs-glyph-circle rs-c-amber" style={{ width: 24, height: 24 }} />
+        </div>
+        <div className="rs-neuron-caption">{en ? 'Count to 2, then tap the button twice' : '默数到 2，然后点击按钮 2 次'}</div>
+    </div>
+);
+
+// 神经元进阶：缩小版计数场地。偏移量是相对场地中心的 (x, y)，与 iOS 相同。
+const RULES_NEURON_FIELD = [
+    { shape: 'circle', color: 'amber', size: 20, x: -56, y: -14 },
+    { shape: 'square', color: 'amber', size: 18, x: -18, y: 16, rotate: 18 },
+    { shape: 'triangle', color: 'blue', size: 20, x: 20, y: -13 },
+    { shape: 'circle', color: 'amber', size: 19, x: 55, y: 13 },
+    { shape: 'triangle', color: 'green', size: 17, x: 0, y: 13, rotate: -21 }
+];
+
+const RulesNeuronFieldDemo = ({ en }) => (
+    <div className="rs-box rs-box-page rs-col rs-gap-8 rs-stretch" role="img" aria-label={en ? 'Advanced neuron counting example: count target circles among more similar moving shapes' : '进阶神经元计数示例：在更多会移动的相似图形中数出目标圆圈'}>
+        <div className="rs-row rs-gap-6 rs-neuron-head">
+            <span className="rs-neuron-target">{en ? 'TARGET' : '目标'}</span>
+            <span className="rs-glyph rs-glyph-circle rs-c-amber" style={{ width: 17, height: 17 }} />
+            <span className="rs-spacer" />
+            <span className="rs-neuron-more">{en ? 'MORE · MOVING' : '更多 · 移动'}</span>
+        </div>
+        <div className="rs-neuron-field">
+            {RULES_NEURON_FIELD.map((g, index) => (
+                <span
+                    key={index}
+                    className={`rs-glyph rs-glyph-${g.shape} rs-c-${g.color}`}
+                    style={{ width: g.size, height: g.size, transform: `translate(-50%, -50%) translate(${g.x}px, ${g.y}px) rotate(${g.rotate || 0}deg)` }}
+                />
+            ))}
+            <span className="rs-neuron-move" style={{ transform: 'translate(-50%, -50%) translate(55px, -15px)' }}>↔</span>
+        </div>
+    </div>
+);
+
+const RULES_DEMOS = {
+    'schulte-basic': RulesSchulteBasicDemo,
+    'schulte-blind': RulesSchulteBlindDemo,
+    'stroop-basic': RulesStroopBasicDemo,
+    'stroop-advanced': RulesStroopAdvancedDemo,
+    'nback-one': RulesNBackOneDemo,
+    'nback-two': RulesNBackTwoDemo,
+    'set-basic': RulesSetBasicDemo,
+    'set-fill': RulesSetFillDemo,
+    'neuron-basic': RulesNeuronBasicDemo,
+    'neuron-field': RulesNeuronFieldDemo
+};
+
+// 提示框：主题色 6% 底、13% 描边；SET 用更小的一号（10 号字、内边距 10、圆角 12）。
+const RulesTip = ({ tone, children }) => (
+    <div className={`rs-tip rs-tip-${tone}`}>{children}</div>
+);
+
+// 密码推理的三行线索示例（PasswordLogicClueExamples，非紧凑版）。
+const RulesCodeClues = ({ copy, advanced }) => {
+    const rows = [
+        { digits: advanced ? ['5', '8', '9', '0'] : ['5', '8', '9'], accent: 0, tone: 'exact' },
+        { digits: advanced ? ['8', '5', '9', '0'] : ['8', '5', '9'], accent: 1, tone: 'misplaced' },
+        { digits: advanced ? ['6', '4', '2', '0'] : ['7', '6', '4'], accent: -1, tone: 'absent' }
+    ];
+    return (
+        <div className="rs-code-box">
+            {rows.map((row, rowIndex) => (
+                <div key={row.tone} className="rs-code-row">
+                    <div className="rs-row rs-gap-4">
+                        {row.digits.map((digit, index) => (
+                            <span key={index} className={`rs-code-digit${index === row.accent ? ` is-${row.tone}` : ''}`}>{digit}</span>
+                        ))}
+                    </div>
+                    <span className="rs-code-divider" />
+                    <span className="rs-code-label">{copy.clues[rowIndex]}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const RulesSheetCard = ({ type, advanced, en, title, onStart }) => {
+    const sheet = RULES_SHEET[type];
+    if (!sheet) return null;
+    const lang = en ? 'en' : 'zh';
+
+    if (sheet.codeLogic) {
+        const copy = sheet[lang];
+        return (
+            <div className="rs-card" role="dialog" aria-modal="true" aria-label={copy.label} onClick={event => event.stopPropagation()}>
+                <div className={`rs-icon rs-icon-${sheet.tone}`}><Icon name={sheet.icon} className="w-7 h-7" /></div>
+                <h2 className="rs-title rs-code-title">{copy.title}</h2>
+                <div className="rs-code-tier">{copy.tiers[advanced ? 1 : 0]}</div>
+                <div className="rs-code-heading">{copy.heading}</div>
+                <div className="rs-code-example">{copy.example(advanced ? '5 3 1 7' : '5 3 1')}</div>
+                <RulesCodeClues copy={copy} advanced={advanced} />
+                <div className="rs-code-note">{copy.colorNote}</div>
+                <div className="rs-code-rule is-first">{copy.rules[0]}</div>
+                <div className="rs-code-rule">{copy.rules[1]}</div>
+                <button type="button" className="rs-start rs-start-code" onClick={onStart}>{copy.button}</button>
+            </div>
+        );
+    }
+
+    const copy = sheet[advanced ? 'advanced' : 'basic'][lang];
+    const Demo = RULES_DEMOS[copy.demo];
+    const space = sheet.demoSpace || 14;
+    return (
+        <div className="rs-card" role="dialog" aria-modal="true" aria-label={en ? `${title} rules` : `${title}训练规则`} onClick={event => event.stopPropagation()}>
+            <div className={`rs-icon rs-icon-${sheet.tone}`}><Icon name={sheet.icon} className="w-7 h-7" /></div>
+            <h2 className="rs-title">{title}</h2>
+            <div className="rs-subtitle">{sheet.subtitle}</div>
+            <div className="rs-lead">{copy.lead}</div>
+            <div className="rs-rule">
+                {copy.rule.map((part, index) => (
+                    typeof part === 'string'
+                        ? <React.Fragment key={index}>{part}</React.Fragment>
+                        : <span key={index} className={`rs-hl rs-hl-${part.tone}`}>{part.hl}</span>
+                ))}
+            </div>
+            {copy.note && <div className="rs-note">{copy.note}</div>}
+            {Demo && <div className="rs-demo" style={{ paddingTop: space, paddingBottom: space }}><Demo en={en} /></div>}
+            {copy.tip && <RulesTip tone={sheet.tipTone}>{copy.tip}</RulesTip>}
+            <button type="button" className="rs-start" onClick={onStart}>{en ? 'Start Training' : '开始训练'}</button>
+        </div>
+    );
+};
+
+// 弹窗外壳：贴底、遮罩不模糊；进入和退出都是 160ms 的缩放 + 淡入淡出（iOS .scale(0.94) + .opacity）。
+// type 变成 null 时先播退出动画再卸载；点「开始」直接卸载，不在游戏画面上播退出。
+const RulesSheetLayer = ({ type, advanced, en, title, onClose, onStart }) => {
+    // last：最近一次打开时的游戏、档位和标题，关闭后靠它把退出动画播完
+    const [last, setLast] = useState(null);
+    const startedRef = useRef(false);
+
+    useEffect(() => {
+        if (type) {
+            setLast({ type, advanced, title });
+            return undefined;
+        }
+        if (startedRef.current) {
+            startedRef.current = false;
+            setLast(null);
+            return undefined;
+        }
+        const timer = setTimeout(() => setLast(null), 160);
+        return () => clearTimeout(timer);
+    }, [type]);
+
+    useEffect(() => {
+        if (!type) return undefined;
+        const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [type, onClose]);
+
+    const leaving = !type;
+    const shown = type ? { type, advanced: last && last.type === type ? last.advanced : advanced, title } : last;
+    if (!shown || (leaving && startedRef.current)) return null;
+    return (
+        <div className={`rs-layer${leaving ? ' is-leaving' : ''}`} onClick={leaving ? undefined : onClose}>
+            <RulesSheetCard
+                type={shown.type}
+                advanced={shown.advanced}
+                en={en}
+                title={shown.title}
+                onStart={() => { if (leaving) return; startedRef.current = true; onStart(); }}
+            />
+        </div>
+    );
+};
+
+// 训练卡片右侧的 i：19×19 细圈里一个小写 i（iOS InfoDot），点击区 48 宽。
+const RulesInfoDot = () => (
+    <span className="rs-info-dot" aria-hidden="true">i</span>
+);
 
 const COLOR_LABELS = [
     { key: 'red', zh: '红', en: 'Red', val: '#EF4444' },
@@ -1698,16 +2077,6 @@ function App() {
             ? TASK_TRANSLATIONS[type]?.[hardMode ? 'homeHard' : 'homeBasic']
             : TASK_DATA[type][hardMode ? 'homeHard' : 'homeBasic']
     );
-    const getTaskGuide = (type) => {
-        if (!isEnglish) {
-            return isChallengeDifficulty
-                ? (TASK_DATA[type].guide.playHard || TASK_DATA[type].guide.play)
-                : TASK_DATA[type].guide.play;
-        }
-
-        const guide = TASK_TRANSLATIONS[type]?.guide;
-        return isChallengeDifficulty ? (guide?.playHard || guide?.play) : guide?.play;
-    };
 
     // --- 数据迁移逻辑：确保 1.0 数据同步到 5.0 ---
     const [history, setHistory] = useState(() => {
@@ -2039,28 +2408,7 @@ function App() {
             title: "舒尔特方格", en: "Schulte Grid", icon: "grid", color: "text-blue-500", time: 60,
             homeBasic: "专注力与视觉宽度", homeHard: "盲点模式 (不显示已选)",
             guide: {
-                goal: "提升视觉搜索效率与专注力",
-                play: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm">按照数字 <span class="text-blue-600 font-bold">1 至 25</span> 的顺序，依次点击方格中的数字。</p>
-            <div class="flex justify-center items-center gap-2 py-2">
-                <div class="w-10 h-10 border-2 border-blue-500 rounded-xl flex items-center justify-center font-bold text-blue-600 bg-blue-50">1</div>
-                <span class="text-slate-400">→</span>
-                <div class="w-10 h-10 border-2 border-slate-200 rounded-xl flex items-center justify-center font-bold text-slate-400">2</div>
-                <span class="text-slate-400">→</span>
-                <div class="w-10 h-10 border-2 border-slate-200 rounded-xl flex items-center justify-center font-bold text-slate-400">3</div>
-            </div>
-            <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100/50 text-[11px] text-slate-500">
-                💡 <span class="font-bold">秘诀：</span>尽量保持视线中心在网格中央，利用<span class="font-bold text-blue-600">余光</span>捕捉周围数字。
-            </div>
-        </div>`,
-                playHard: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm"><span class="text-amber-600 font-bold">⚠️ 进阶规则：</span>点过的数字会<span class="text-amber-600 font-bold">立即消失</span>。</p>
-            <div class="bg-amber-50 p-4 rounded-3xl border border-amber-100 text-[11px] text-amber-700 leading-relaxed">
-                这是“盲点”挑战。你需要记住哪些位置已经点过了，避免在空位上浪费视觉搜索时间！
-            </div>
-        </div>`
+                goal: "提升视觉搜索效率与专注力"
             },
             effect: "增强视觉广度及快速信息处理能力。"
         },
@@ -2068,28 +2416,7 @@ function App() {
             title: "Stroop 干扰", en: "Stroop Test", icon: "palette", color: "text-rose-500", time: 60,
             homeBasic: "认知抑制控制", homeHard: "双重语义冲突",
             guide: {
-                goal: "练习抑制本能反应的冲动",
-                play: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm">忽略文字含义，点击与文字 <span class="text-rose-600 font-bold">物理颜色</span> 相符的按钮。</p>
-            <div class="bg-slate-50 p-4 rounded-3xl flex flex-col items-center border border-slate-100">
-                <span class="text-2xl font-black text-blue-500 mb-2">红 色</span>
-                <div class="flex gap-2">
-                    <div class="px-4 py-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full">点击红色 (❌)</div>
-                    <div class="px-4 py-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">点击蓝色 (✅)</div>
-                </div>
-            </div>
-            <div class="bg-rose-50/50 p-3 rounded-2xl border border-rose-100/50 text-[11px] text-slate-500">
-                💡 <span class="font-bold text-rose-600">注意：</span>你的大脑会下意识想读字，请强制关注颜色本身！
-            </div>
-        </div>`,
-                playHard: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm"><span class="text-rose-600 font-bold">⚠️ 进阶规则：</span>色块消失！改为点击对应的 <span class="text-rose-600 font-bold">文字内容</span>。</p>
-            <div class="bg-rose-50 p-4 rounded-3xl border border-rose-100 text-[11px] text-rose-700 leading-relaxed">
-                例：看到蓝色的“红”字，你必须在下方按钮中找出写着<span class="font-bold underline">“蓝”</span>字的那个。
-            </div>
-        </div>`
+                goal: "练习抑制本能反应的冲动"
             },
             effect: "锻炼反应抑制和选择性注意力。"
         },
@@ -2097,46 +2424,7 @@ function App() {
             title: "N-Back 记忆", en: "N-Back Task", icon: "brain", color: "text-indigo-500", time: 60,
             homeBasic: "1-Back模式", homeHard: "2-Back 双重难度",
             guide: {
-                goal: "训练大脑不断更新暂存信息的能力",
-                play: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm">判断当前数字，是否与 <span class="text-indigo-600 font-bold">前1步</span> 出现的数字相同。</p>
-            <div class="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex items-center justify-center gap-4">
-                <div class="flex flex-col items-center gap-1 opacity-40">
-                    <div class="w-10 h-10 bg-white border rounded-xl flex items-center justify-center font-black">7</div>
-                    <span class="text-[8px] font-bold">前1步</span>
-                </div>
-                <div class="text-indigo-400 font-black animate-pulse">＝?</div>
-                <div class="flex flex-col items-center gap-1">
-                    <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-black text-white shadow-lg">7</div>
-                    <span class="text-[8px] font-bold text-indigo-600">当前</span>
-                </div>
-            </div>
-            <div class="font-mono tracking-widest text-center py-1 bg-white rounded-lg border border-slate-100 text-[11px]">
-                2 → 5 → <span class="bg-green-100 px-1 rounded text-green-700 font-bold">5</span>(点!)
-            </div>
-        </div>`,
-                playHard: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm">判断当前数字，是否与 <span class="text-purple-600 font-bold">前第 2 步</span> 相同。</p>
-            <div class="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex justify-between items-center px-2">
-                <div class="flex flex-col items-center gap-1">
-                    <div class="w-9 h-9 bg-purple-500 rounded-lg flex items-center justify-center font-black text-white">4</div>
-                    <span class="text-[8px] font-bold text-purple-600">对比项</span>
-                </div>
-                <div class="w-4 h-[1px] bg-slate-200"></div>
-                <div class="opacity-20 flex flex-col items-center gap-1">
-                    <div class="w-9 h-9 bg-white border rounded-lg flex items-center justify-center font-black">9</div>
-                    <span class="text-[8px]">跳过</span>
-                </div>
-                <div class="w-4 h-[1px] bg-slate-200"></div>
-                <div class="flex flex-col items-center gap-1">
-                    <div class="w-9 h-9 bg-purple-500 rounded-lg flex items-center justify-center font-black text-white ring-4 ring-purple-100">4</div>
-                    <span class="text-[8px] font-bold text-purple-600">当前</span>
-                </div>
-            </div>
-            <p class="text-[10px] text-center text-slate-400">间隔一个数字，相同即点！</p>
-        </div>`
+                goal: "训练大脑不断更新暂存信息的能力"
             },
             effect: "提升流体智力和工作记忆容量。"
         },
@@ -2144,34 +2432,7 @@ function App() {
             title: "SET 逻辑", en: "Set Logic", icon: "shapes", color: "text-green-500", time: 60,
             homeBasic: "逻辑处理", homeHard: "增加填充度维度",
             guide: {
-                goal: "识别属性的全同与全异",
-                play: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-sm">找出 3 张牌，使它们的 <span class="text-indigo-600 font-bold">颜色</span> 和 <span class="text-indigo-600 font-bold">形状</span> 满足：</p>
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-50 p-3 rounded-2xl flex flex-col items-center border">
-                    <div class="flex gap-1 mb-1"><div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div><div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div><div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div></div>
-                    <span class="text-[9px] font-bold text-slate-500 uppercase">全部相同</span>
-                </div>
-                <div class="bg-slate-50 p-3 rounded-2xl flex flex-col items-center border">
-                    <div class="flex gap-1 mb-1"><div class="w-2.5 h-2.5 rounded-full bg-red-400"></div><div class="w-2.5 h-2.5 rounded-full bg-blue-400"></div><div class="w-2.5 h-2.5 rounded-full bg-green-400"></div></div>
-                    <span class="text-[9px] font-bold text-slate-500 uppercase">全部不同</span>
-                </div>
-            </div>
-            <div class="bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50 text-[10px] text-slate-500">
-                💡 即使形状完全一样（三个圆），只要颜色互不相同（红/蓝/绿），也成立！
-            </div>
-        </div>`,
-                playHard: `
-        <div class="space-y-4">
-            <p class="text-slate-600 font-medium text-[11px]">进阶模式下，<span class="text-green-600 font-bold">填充度</span> 也必须符合全同或全异原则。</p>
-            <div class="bg-green-50 p-3 rounded-2xl border border-green-100 flex justify-center gap-2">
-                <div class="w-6 h-6 rounded bg-green-500"></div>
-                <div class="w-6 h-6 rounded bg-green-500 opacity-30"></div>
-                <div class="w-6 h-6 rounded bg-green-500 opacity-10"></div>
-            </div>
-            <p class="text-[10px] text-center text-slate-400 tracking-tight">↑ 比如透明度“红/浅红/淡红”互不相同，成立 ✅</p>
-        </div>`
+                goal: "识别属性的全同与全异"
             },
             effect: "提升前额叶的并行逻辑处理能力。"
         },
@@ -2180,20 +2441,7 @@ function App() {
             title: "神经元计数", en: "Neuron Counting", icon: "binary", color: "text-amber-500", time: 60,
             homeBasic: "目标计数：同形同色", homeHard: "干扰物增加",
             guide: {
-                goal: "在干扰中精确统计目标数量",
-                play: `
-    <div class="space-y-4">
-        <p class="text-slate-600 font-medium text-sm">数出屏幕中 <span class="text-amber-600 font-bold">形状和颜色都与目标相同</span> 的图形。</p>
-        <div class="bg-slate-50 p-4 rounded-3xl flex flex-col items-center border">
-            <div class="flex gap-2 mb-3">
-                <div class="w-6 h-6 rounded-full bg-amber-500"></div>
-                <div class="w-6 h-6 bg-slate-300"></div>
-                <div class="w-6 h-6 rounded-full bg-amber-500"></div>
-            </div>
-            <p class="text-[10px] text-slate-400">默数到 2，然后点击按钮 2 次</p>
-        </div>
-    </div>`,
-                playHard: `<div class="space-y-4"><p class="text-slate-600 font-medium text-sm">更多相似干扰项，且部分目标会移动。</p><p class="text-slate-600 font-medium text-sm">数出屏幕中 <span class="text-amber-600 font-bold">形状和颜色都与目标相同</span> 的图形。</p></div>`
+                goal: "在干扰中精确统计目标数量"
             }
         },
         // 密码推理是原生 App 先做的游戏，网页没有原版，所以这里以 iOS 为准：
@@ -2202,9 +2450,7 @@ function App() {
             title: "密码推理", en: "Code Logic", icon: "lock-keyhole", color: "text-indigo-600", time: 0,
             homeBasic: "三位数字逻辑", homeHard: "四位数字逻辑",
             guide: {
-                goal: "从线索中推理出唯一密码",
-                play: `<div class="space-y-3"><p class="text-slate-600 font-medium text-sm">以密码 <span class="font-mono font-black text-indigo-600">5 3 1</span> 为例，看懂线索的三种说法：</p><div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-indigo-600 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 个数字正确且位置正确</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-rose-500 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 个数字正确，但位置错误</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">7</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">6</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">4</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">没有数字正确</span></div></div><p class="text-[10px] text-slate-400 leading-relaxed">颜色仅用于示例；正式题请以线索文字为准。</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">四条线索要一起看；每题只有一个答案。数字不会重复，首位不会是 0。</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">每次错误提交扣 10 分；可修改后再次提交。</p></div>`,
-                playHard: `<div class="space-y-3"><p class="text-slate-600 font-medium text-sm">以密码 <span class="font-mono font-black text-indigo-600">5 3 1 7</span> 为例，看懂线索的三种说法：</p><div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-indigo-600 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 个数字正确且位置正确</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">8</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-rose-500 text-white">5</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">9</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">1 个数字正确，但位置错误</span></div><div class="flex items-center gap-2.5"><div class="flex gap-1"><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">6</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">4</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">2</span><span class="w-7 h-8 flex items-center justify-center rounded-lg font-mono font-black text-[13px] bg-white border border-slate-200 text-slate-700">0</span></div><div class="w-px h-6 bg-slate-200"></div><span class="text-[11px] font-bold text-slate-500 text-left leading-snug">没有数字正确</span></div></div><p class="text-[10px] text-slate-400 leading-relaxed">颜色仅用于示例；正式题请以线索文字为准。</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">四条线索要一起看；每题只有一个答案。数字不会重复，首位不会是 0。</p><p class="text-[11px] text-slate-500 font-medium leading-relaxed">每次错误提交扣 10 分；可修改后再次提交。</p></div>`
+                goal: "从线索中推理出唯一密码"
             }
         },
 
@@ -4010,7 +4256,7 @@ function App() {
                                                 <div className="task-subtitle text-[11px] text-slate-500 font-medium">{getTaskHome(type, mode === 'hard')}</div>
                                             </div>
                                         </div>
-                                        <button onClick={(event) => { event.stopPropagation(); playSound('tap'); setShowInfo(type); }} className="info-button p-2 ml-1 text-slate-300"><Icon name="info" className="w-5 h-5" /></button>
+                                        <button type="button" aria-label={isEnglish ? `${getTaskTitle(type)} rules` : `${getTaskTitle(type)}规则`} onClick={(event) => { event.stopPropagation(); playSound('tap'); setShowInfo(type); }} className="rs-info-button"><RulesInfoDot /></button>
                                     </div>
                                 ))}
                             </div>
@@ -5001,17 +5247,14 @@ function App() {
                 </div>
             )}
 
-            {showInfo && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40" onClick={() => setShowInfo(null)}>
-                    <div className="bg-white w-full max-w-xs rounded-[2.8rem] p-8 relative animate-pop-center" onClick={e => e.stopPropagation()}>
-                        <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-6 ${TASK_DATA[showInfo].color}`}><Icon name={TASK_DATA[showInfo].icon} className="w-7 h-7" /></div>
-                        <h2 className="text-xl font-black mb-1">{getTaskTitle(showInfo)}</h2>
-                        <div className="text-[9px] font-bold text-slate-400 brand-text mb-6">{isEnglish ? ui.moduleLabel : TASK_DATA[showInfo].en}</div>
-                        <div className="text-xs text-slate-600 leading-relaxed font-medium mb-8"><LatexFmt text={getTaskGuide(showInfo)} /></div>
-                        <button onClick={() => { const t = showInfo; setShowInfo(null); startChallenge(t); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">{ui.startTraining}</button>
-                    </div>
-                </div>
-            )}
+            <RulesSheetLayer
+                type={showInfo}
+                advanced={isChallengeDifficulty}
+                en={isEnglish}
+                title={showInfo ? getTaskTitle(showInfo) : ''}
+                onClose={() => setShowInfo(null)}
+                onStart={() => { const t = showInfo; setShowInfo(null); startChallenge(t); }}
+            />
 
             {isGameView && (
                 <div className="game-screen flex-1 flex flex-col">
