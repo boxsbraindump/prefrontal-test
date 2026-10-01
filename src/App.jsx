@@ -93,8 +93,8 @@ const UI_TEXT = {
         dailyTomorrowPreview: "明日预告",
         dailyTomorrowLocked: "完成今日挑战后查看明日预告",
         dailyTomorrowPrefix: "明天",
-        dailySeeTomorrow: "明天见",
-        dailyPracticeAgain: "再练一次",
+        dailySeeTomorrow: "查看明日挑战",
+        dailyPracticeAgain: "再冲一次",
         dailyResultNote: "今天完成了一次专注训练，明天回来继续累积你的记录。",
         dailyCategories: {
             schulte: "视觉搜索挑战",
@@ -202,8 +202,8 @@ const UI_TEXT = {
         dailyTomorrowPreview: "Tomorrow preview",
         dailyTomorrowLocked: "Finish today to reveal tomorrow",
         dailyTomorrowPrefix: "Tomorrow",
-        dailySeeTomorrow: "See you tomorrow",
-        dailyPracticeAgain: "Practice again",
+        dailySeeTomorrow: "See tomorrow",
+        dailyPracticeAgain: "Try again",
         dailyResultNote: "One focused session is in the record. Come back tomorrow and keep building your rhythm.",
         dailyCategories: {
             schulte: "visual search challenge",
@@ -1014,6 +1014,220 @@ const DAILY_CHALLENGES = [
     }
 ];
 
+// —— 以下为与 iOS 1.0.2 对齐的每日挑战、周报、记录、「我的」页文案和小组件（ANDROID_PARITY 第 39–44 项）——
+// 文案逐字取自 iOS：DailyChallengeHome.swift、DailyChallengeFlow.swift、RootView.swift。
+
+// 每日任务卡只写「变体 · N秒」（DailyChallengeHome.swift:114-128）
+const DAILY_VARIANT_LABELS = {
+    reverse: { zh: '倒序', en: 'Reverse' },
+    forward: { zh: '正序', en: 'Forward' },
+    'color-conflict': { zh: '颜色冲突', en: 'Color conflict' },
+    'two-back': { zh: '2-Back', en: '2-Back' },
+    triad: { zh: '三元组', en: 'Triad' },
+    storm: { zh: '高干扰', en: 'High distraction' },
+    letters: { zh: '字母', en: 'Letters' },
+    grid6: { zh: '6×6', en: '6×6' }
+};
+
+const getDailyTaskMetadata = (spec, isEnglish) => {
+    const label = DAILY_VARIANT_LABELS[spec.variant] || { zh: '每日挑战', en: 'Daily' };
+    return isEnglish ? `${label.en} · ${spec.duration}s` : `${label.zh} · ${spec.duration}秒`;
+};
+
+// 主卡副标题：只有 Stroop 颜色冲突换成专用说明，其余用挑战自己的副标题（DailyChallengeHome.swift:103-110）
+const getDailyHeroSubtitle = (spec, theme, isEnglish) => {
+    if (spec.task === 'stroop' && spec.variant === 'color-conflict') {
+        return isEnglish
+            ? 'Ignore the word and tap the answer matching its ink color.'
+            : '忽略文字含义，选择与文字物理颜色相符的答案。';
+    }
+    return theme?.subtitle || '';
+};
+
+// 开始前规则卡的规则句（DailyChallengeFlow.swift:87-106）
+const getDailyGateRule = (spec, isEnglish) => {
+    if (spec.task === 'schulte') {
+        if (spec.variant === 'reverse') return isEnglish ? 'Tap the numbers from 25 → 1 in order.' : '按 25 → 1 的顺序，依次点击方格中的数字。';
+        if (spec.variant === 'letters') return isEnglish ? 'Tap the letters from A → Y in order.' : '按 A → Y 的顺序，依次点击方格中的字母。';
+        if (spec.variant === 'grid6') return isEnglish ? 'Tap the 6×6 grid from 1 → 36 in order.' : '按 1 → 36 的顺序，依次点击 6×6 方格。';
+        return isEnglish ? 'Tap the numbers from 1 → 25 in order.' : '按 1 → 25 的顺序，依次点击方格中的数字。';
+    }
+    if (spec.task === 'stroop') return isEnglish ? 'Ignore the word and tap the answer matching its ink color.' : '忽略文字含义，点击与文字物理颜色相符的答案。';
+    if (spec.task === 'nback') return isEnglish ? 'Decide whether the current number matches the one 2 steps back.' : '判断当前数字是否与前第 2 步出现的数字相同。';
+    if (spec.task === 'setgame') return isEnglish ? 'Choose 3 cards whose attributes are all the same or all different.' : '选择 3 张牌，让每项属性都全同或全异。';
+    return isEnglish ? 'Count every shape that matches the target, then submit the total.' : '数出所有与目标相同的图形，然后提交数量。';
+};
+
+// 示意图的读屏说明（DailyChallengeFlow.swift:197-212）
+const getDailyGateDemoLabel = (spec, isEnglish) => {
+    if (spec.task === 'schulte') {
+        if (spec.variant === 'reverse') return isEnglish ? 'Reverse Schulte example: tap 25, then 24, then 23' : '倒序舒尔特示例：依次点击二十五、二十四、二十三';
+        return isEnglish ? 'Schulte Grid example: tap the cells in order' : '舒尔特方格示例：按顺序点击方格';
+    }
+    if (spec.task === 'stroop') return isEnglish ? 'Stroop example: a red word in blue ink; choose blue' : 'Stroop 示例：蓝色显示的红字，应选择蓝色';
+    if (spec.task === 'nback') return isEnglish ? 'Two-back example: 4, 9, 4; the current number matches two steps back' : '二回溯示例：四、九、四，当前数字与前第二步相同';
+    if (spec.task === 'setgame') return isEnglish ? 'SET example: three circle cards with all different colors form a valid set' : 'SET 示例：三张圆形卡片颜色全异，构成有效 SET';
+    return isEnglish ? 'Neuron counting example: count the three target circles' : '神经元计数示例：数出三个目标圆形';
+};
+
+const DAILY_PARITY_TEXT = {
+    zh: {
+        tomorrow: '明日',
+        gateKicker: '每日挑战',
+        gateStart: '开始挑战',
+        gateLater: '暂不挑战',
+        resultNote: '完成每日挑战会点亮连续记录。',
+        // 周报未解锁页（RootView.swift:1938-1967）
+        lockKicker: '周报解锁',
+        lockTitle: '再完成几次每日挑战，周报就会开始生成',
+        lockBody: '训练记录已经在本机保存。完成 3 天每日挑战后，就可以查看第一份每周总结。',
+        lockProgress: '入门周报',
+        lockDaysLeft: (n) => `还需要 ${n} 天每日挑战`,
+        lockCta: '开始今日挑战',
+        mostImproved: '进步最大',
+        language: '语言',
+        tutorials: '新手教学',
+        appearance: '外观',
+        sound: '音效'
+    },
+    en: {
+        tomorrow: 'Tomorrow',
+        gateKicker: 'Daily Challenge',
+        gateStart: 'Start challenge',
+        gateLater: 'Not now',
+        resultNote: 'Daily completion lights up your streak.',
+        lockKicker: 'REPORT UNLOCK',
+        lockTitle: 'A few more daily challenges, then your report begins',
+        lockBody: 'Your training record is already being saved. Complete the daily challenge on 3 days to unlock your first weekly summary.',
+        lockProgress: 'STARTER REPORT',
+        lockDaysLeft: (n) => `${n} more days of the daily challenge`,
+        lockCta: "Start today's challenge",
+        mostImproved: 'Most improved',
+        language: 'Language',
+        tutorials: 'New Player Tutorials',
+        appearance: 'Appearance',
+        sound: 'Sound'
+    }
+};
+
+// 周报结尾建议第 1 条要用到各游戏的目标，取自 iOS WebsiteContent.json（中文与 TASK_DATA.goal 相同；英文网页原本没有）
+const TASK_GOALS_ZH = {
+    schulte: '提升视觉搜索效率与专注力',
+    stroop: '练习抑制本能反应的冲动',
+    nback: '训练大脑不断更新暂存信息的能力',
+    setgame: '识别属性的全同与全异',
+    neuroncount: '在干扰中精确统计目标数量',
+    passwordlogic: '从线索中推理出唯一密码'
+};
+
+const TASK_GOALS_EN = {
+    schulte: 'Train visual search and focus',
+    stroop: 'Practice inhibiting automatic responses',
+    nback: 'Train working-memory updating',
+    setgame: 'Recognize same and different properties',
+    neuroncount: 'Count targets accurately among distractions',
+    passwordlogic: 'Deduce one unique code from the clues'
+};
+
+const WEEKLY_SUGGESTION_ORDER = ['schulte', 'stroop', 'nback', 'setgame', 'neuroncount', 'passwordlogic'];
+
+// 周报里按游戏归类：竞技基础档记作 arena-basic，与 iOS 一样并成 arena
+const getWeeklyEventTask = (event) => {
+    const task = event.dailyTask || event.task || 'schulte';
+    return task === 'arena-basic' ? 'arena' : task;
+};
+
+// 规则卡里的小示意图，不可点，只是把玩法先画出来（DailyChallengeFlow.swift:229-340）
+const DailyGateDemo = ({ spec, isEnglish }) => {
+    if (spec.task === 'schulte') {
+        const values = spec.variant === 'reverse' ? ['25', '24', '23'] : spec.variant === 'letters' ? ['A', 'B', 'C'] : ['1', '2', '3'];
+        return (
+            <div className="daily-gate-demo-row">
+                {values.map((value, index) => (
+                    <React.Fragment key={value}>
+                        <span className={`daily-gate-schulte-cell ${index === 0 ? 'is-target' : ''}`}>{value}</span>
+                        {index < values.length - 1 && (
+                            <svg className="daily-gate-arrow" viewBox="0 0 15 12" aria-hidden="true">
+                                <path d="M0 6H15M10 2L15 6L10 10" />
+                            </svg>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    }
+    if (spec.task === 'stroop') {
+        return (
+            <div className="daily-gate-stroop">
+                <div className="daily-gate-stroop-word">{isEnglish ? 'RED' : '红 色'}</div>
+                <div className="daily-gate-demo-row is-tight">
+                    <span className="daily-gate-color-choice is-red">{isEnglish ? 'Red' : '红色'}</span>
+                    <span className="daily-gate-color-choice is-blue is-selected">{isEnglish ? 'Blue' : '蓝色'}</span>
+                </div>
+            </div>
+        );
+    }
+    if (spec.task === 'nback') {
+        const cards = [
+            { number: '4', label: isEnglish ? '2 back' : '前第 2 步', active: true },
+            { number: '9', label: isEnglish ? 'skip' : '跳过', active: false },
+            { number: '4', label: isEnglish ? 'now' : '当前', active: true }
+        ];
+        return (
+            <div className="daily-gate-demo-row is-nback">
+                {cards.map((card, index) => (
+                    <div key={index} className={`daily-gate-nback-card ${card.active ? 'is-active' : ''}`}>
+                        <span>{card.number}</span>
+                        <small>{card.label}</small>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    if (spec.task === 'setgame') {
+        return (
+            <div className="daily-gate-demo-row">
+                {['#6366f1', '#ef4444', '#10b981'].map(color => (
+                    <span key={color} className="daily-gate-set-card"><i style={{ background: color }} /></span>
+                ))}
+            </div>
+        );
+    }
+    return (
+        <div className="daily-gate-demo-row is-neuron">
+            <div className="daily-gate-neuron-target">
+                <i />
+                <small>{isEnglish ? 'Target' : '目标'}</small>
+            </div>
+            <div className="daily-gate-neuron-field">
+                <i /><b /><i /><i />
+            </div>
+            <span className="daily-gate-neuron-answer">3</span>
+        </div>
+    );
+};
+
+// 每日结算的绿色勾：实心圆里镂出一个勾形三角（与 iOS DailyResultMark 同一路径）
+const DailyResultMark = () => (
+    <svg viewBox="0 0 40 40" className="daily-result-mark" aria-hidden="true">
+        <path fill="currentColor" fillRule="evenodd" d="M4.8 20a15.2 15.2 0 1 0 30.4 0a15.2 15.2 0 1 0-30.4 0Z M9.6 21.2L17.2 28.8L31.2 12.4Z" />
+    </svg>
+);
+
+// 「我的」页的开关，照 iOS 系统开关画（轨道 51×31、白色滑块 27）
+const ParitySwitch = ({ checked, onChange, label }) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`parity-switch ${checked ? 'is-on' : ''}`}
+        onClick={() => onChange(!checked)}
+    >
+        <span className="parity-switch-thumb" />
+    </button>
+);
+
 const getDayKey = (date = new Date()) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1670,6 +1884,126 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
         comparison = isEnglish ? 'A steady week is still a real week.' : '稳定完成，本身就是进步。';
     }
 
+    // —— 以下逐条照 iOS 1.0.2 周报（RootView.swift:2507-2691） ——
+    // 第 01 行：按本周每日挑战天数分三档
+    const daysCopy = completedDays < 5
+        ? (isEnglish ? 'Enough to show a pattern. One or two more days makes it steadier.' : '刚好够看出规律。再多一两天，节奏会更稳。')
+        : completedDays <= 6
+            ? (isEnglish ? 'You came back on nearly every day this week.' : '这一周你几乎每天都回来了。')
+            : (isEnglish ? 'A full week, without missing a day.' : '整整一周，一天没落。');
+
+    const groupByTask = (list) => list.reduce((acc, event) => {
+        const task = getWeeklyEventTask(event);
+        (acc[task] = acc[task] || []).push(event);
+        return acc;
+    }, {});
+    const weekByTask = groupByTask(weekCompletions);
+    const previousByTask = groupByTask(previousWeekCompletions);
+    // 两周都玩过的游戏，按字母序遍历（与 iOS 的 sorted() 一致，决定并列时取谁）
+    const sharedTasks = Object.keys(weekByTask).filter(task => previousByTask[task]).sort();
+    const positiveDurations = (list) => list.map(event => Number(event.durationSeconds || 0)).filter(value => Number.isFinite(value) && value > 0);
+    const scoresOf = (list) => list.map(event => Number(event.score || 0)).filter(value => Number.isFinite(value));
+
+    // 第 02 行「进步最大」：舒尔特看最快用时，其余看最高分，换成百分比后取最大的正值
+    let mostImproved = null;
+    sharedTasks.forEach(task => {
+        const usesTime = task === 'schulte';
+        let percent = null;
+        if (usesTime) {
+            const now = positiveDurations(weekByTask[task]);
+            const then = positiveDurations(previousByTask[task]);
+            if (now.length && then.length) {
+                const nowBest = Math.min(...now);
+                const thenBest = Math.min(...then);
+                percent = Math.round(((thenBest - nowBest) / thenBest) * 100);
+            }
+        } else {
+            const now = scoresOf(weekByTask[task]);
+            const then = scoresOf(previousByTask[task]);
+            if (now.length && then.length) {
+                const nowBest = Math.max(...now);
+                const thenBest = Math.max(...then);
+                if (thenBest > 0) percent = Math.round(((nowBest - thenBest) / thenBest) * 100);
+            }
+        }
+        if (percent === null || percent <= 0) return;
+        if (!mostImproved || percent > mostImproved.percent) mostImproved = { task, percent, usesTime };
+    });
+    const mostImprovedCopy = mostImproved
+        ? (mostImproved.usesTime
+            ? (isEnglish ? `${mostImproved.percent}% faster than last week.` : `用时比上周快了 ${mostImproved.percent}%。`)
+            : (isEnglish ? `${mostImproved.percent}% higher than last week.` : `最高分比上周高了 ${mostImproved.percent}%。`))
+        : null;
+
+    // 第 03 行：和上周最高分比
+    const bestCopy = previousBestScore <= 0
+        ? (isEnglish ? 'There is no score from last week to compare — this one sets the baseline.' : '上周还没有可比的成绩，这一条就是新的起点。')
+        : bestScore > previousBestScore
+            ? (isEnglish ? `${bestScore - previousBestScore} points above last week's ${previousBestScore}.` : `比上周的 ${previousBestScore} 分高了 ${bestScore - previousBestScore} 分。`)
+            : bestScore < previousBestScore
+                ? (isEnglish ? `Last week reached ${previousBestScore}. This time is ${previousBestScore - bestScore} short.` : `上周是 ${previousBestScore} 分，这次还差 ${previousBestScore - bestScore} 分。`)
+                : (isEnglish ? 'The same as last week — holding steady counts too.' : '和上周持平，稳住也是一种结果。');
+
+    // 第 04 行对比胶囊的数字滚动目标：两周都有舒尔特用时，或两周都有最高分时才滚动
+    const comparisonCount = fastestSchulte && previousFastestSchulte
+        ? { previous: previousFastestSchulte, current: fastestSchulte, unit: 'seconds' }
+        : bestScore && previousBestScore
+            ? { previous: previousBestScore, current: bestScore, unit: 'score' }
+            : null;
+
+    // 结尾建议：四条规则按顺序，先成立的生效
+    const accuracyOf = (list) => {
+        const correct = list.reduce((sum, event) => sum + (Number(event.correct) || 0), 0);
+        const attempts = correct + list.reduce((sum, event) => sum + (Number(event.incorrect) || 0), 0);
+        return attempts > 0 ? correct / attempts : null;
+    };
+    let decliningTask = null;
+    let worstDrop = 0.05;
+    sharedTasks.forEach(task => {
+        const now = accuracyOf(weekByTask[task]);
+        const then = accuracyOf(previousByTask[task]);
+        if (now === null || then === null) return;
+        const drop = then - now;
+        if (drop >= worstDrop) {
+            worstDrop = drop;
+            decliningTask = task;
+        }
+    });
+    // 从报告所在的那一周往前数，每周（周一到周日）至少有一局就算连续，最多 52 周
+    const trainedDays = new Set([...allCompletions, ...previousWeekCompletions]
+        .map(event => event.dailyDay || event.day || (event.at ? getDayKey(new Date(event.at)) : null))
+        .filter(Boolean));
+    let consecutiveWeeks = 0;
+    let cursorWeekStart = weekStart;
+    while (consecutiveWeeks < 52) {
+        const start = cursorWeekStart;
+        const hasSession = Array.from({ length: 7 }, (_, index) => getOffsetDayKey(start, index)).some(day => trainedDays.has(day));
+        if (!hasSession) break;
+        consecutiveWeeks += 1;
+        cursorWeekStart = getOffsetDayKey(start, -7);
+    }
+    const playedTasks = Object.keys(weekByTask);
+    let advice;
+    const onlyTask = playedTasks.length === 1 ? playedTasks[0] : null;
+    const suggestedTask = onlyTask ? WEEKLY_SUGGESTION_ORDER.find(task => task !== onlyTask) : null;
+    const nameOf = (task) => {
+        if (!taskTitle) return task;
+        try { return taskTitle(task); } catch (error) { return task; }
+    };
+    if (suggestedTask) {
+        advice = isEnglish
+            ? `You stayed with one game this week. Next week, try ${nameOf(suggestedTask)}: ${TASK_GOALS_EN[suggestedTask]}.`
+            : `这周你只练了一个项目。下周可以试试「${nameOf(suggestedTask)}」：${TASK_GOALS_ZH[suggestedTask]}。`;
+    } else if (decliningTask) {
+        advice = isEnglish
+            ? `Your accuracy on ${nameOf(decliningTask)} slipped from last week. Slowing down usually helps more than speeding up.`
+            : `「${nameOf(decliningTask)}」的正确率比上周低了一些。慢一点做，往往比快更有用。`;
+    } else if (consecutiveWeeks >= 2) {
+        advice = isEnglish ? `You have trained ${consecutiveWeeks} weeks in a row now.` : `你已经连续 ${consecutiveWeeks} 周保持训练了。`;
+    } else {
+        advice = isEnglish ? 'Keep the rhythm going. One small session is enough to return.' : '保持现在的节奏，下一次回来就算继续前进。';
+    }
+
     const hasData = weekCompletions.length > 0 || completedDays > 0;
     let persona;
     if (!hasData) persona = isEnglish ? 'First page is waiting' : '第一份报告待生成';
@@ -1728,7 +2062,13 @@ const buildWeeklyBrainReport = ({ retentionData, dailyProgress, today, taskTitle
         persona,
         summary,
         highlight,
-        suggestion
+        suggestion,
+        daysCopy,
+        mostImproved,
+        mostImprovedCopy,
+        bestCopy,
+        comparisonCount,
+        advice
     };
 };
 
@@ -1820,6 +2160,8 @@ function App() {
     const [weeklyReportStep, setWeeklyReportStep] = useState(0);
     const [weeklyReportCount, setWeeklyReportCount] = useState(0);
     const [weeklyReportScore, setWeeklyReportScore] = useState(0);
+    // 周报第 04 行对比胶囊的滚动数字（与 iOS 一致）
+    const [weeklyReportCompare, setWeeklyReportCompare] = useState({ previous: 0, current: 0 });
     const weeklyReportSoundTickRef = useRef({ count: 0, scoreStep: -1, lastAt: 0 });
     const [weeklyReportScope, setWeeklyReportScope] = useState('current');
     const [weeklyReportReturnView, setWeeklyReportReturnView] = useState('settings');
@@ -1836,6 +2178,8 @@ function App() {
     const [retentionData, setRetentionData] = useState(() => readRetentionData());
     const [dailyProgress, setDailyProgress] = useState(() => readDailyProgress());
     const [dailyWeekAdvance, setDailyWeekAdvance] = useState(null);
+    // 每日挑战开始前的规则卡（iOS 每次开局、包括「再冲一次」都会先显示）
+    const [dailyGateOpen, setDailyGateOpen] = useState(false);
     const [cloudSummary, setCloudSummary] = useState(null);
     const [cloudStatus, setCloudStatus] = useState('idle');
     const [ownerToken, setOwnerToken] = useState(() => {
@@ -1939,11 +2283,13 @@ function App() {
         }
         : undefined;
     const tomorrowSpec = getDailySpec(getOffsetDayKey(dailySpec.day, 1));
-    const tomorrowCategory = ui.dailyCategories?.[tomorrowSpec.task] || (isEnglish ? TASK_TRANSLATIONS[tomorrowSpec.task]?.title : TASK_DATA[tomorrowSpec.task]?.title) || tomorrowSpec.task;
     const dailyTheme = dailySpec.theme?.[lang] || dailySpec.theme?.en;
+    const dailyParityText = isEnglish ? DAILY_PARITY_TEXT.en : DAILY_PARITY_TEXT.zh;
+    const openDailyGate = () => {
+        playSound('tap');
+        setDailyGateOpen(true);
+    };
     const tomorrowTheme = tomorrowSpec.theme?.[lang] || tomorrowSpec.theme?.en;
-    const dailyRuleLabel = dailySpec.ruleLabel?.[lang] || (dailySpec.completion === 'finish-grid' ? ui.dailyGoalFinish : ui.dailyGoalTimed);
-    const dailyDurationLabel = `${dailySpec.duration || 60}s`;
     const dailyWeekLabels = isEnglish ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['一', '二', '三', '四', '五', '六', '日'];
     const localRetentionSummary = buildRetentionSummary(retentionData);
     const retentionSummary = cloudSummary || localRetentionSummary;
@@ -2537,12 +2883,10 @@ function App() {
         preview: isWeeklyReportPreview
     });
     const weeklyReportBasicUnlockDays = 3;
-    const weeklyReportFullUnlockDays = 7;
     const weeklyReportHasBasicAccess = weeklyReport.completedDays >= weeklyReportBasicUnlockDays;
     const weeklyReportUnlocked = !weeklyReportGatePreview && weeklyReportHasBasicAccess;
-    const weeklyReportLockIsFullStage = weeklyReportHasBasicAccess;
-    const weeklyReportLockTarget = weeklyReportLockIsFullStage ? weeklyReportFullUnlockDays : weeklyReportBasicUnlockDays;
-    const weeklyReportLockProgress = Math.min(weeklyReport.completedDays, weeklyReportLockTarget);
+    // 对比胶囊滚动时的单位：舒尔特用时带「秒 / s」，最高分不带
+    const weeklyReportCompareSuffix = weeklyReport.comparisonCount?.unit === 'seconds' ? (isEnglish ? 's' : '秒') : '';
     const mondayWeeklyReport = buildWeeklyBrainReport({
         retentionData,
         dailyProgress,
@@ -2814,12 +3158,14 @@ function App() {
             setWeeklyReportStep(0);
             setWeeklyReportCount(0);
             setWeeklyReportScore(0);
+            setWeeklyReportCompare({ previous: 0, current: 0 });
             return undefined;
         }
 
         setWeeklyReportStep(0);
         setWeeklyReportCount(0);
         setWeeklyReportScore(0);
+        setWeeklyReportCompare({ previous: 0, current: 0 });
         weeklyReportSoundTickRef.current = { count: 0, scoreStep: -1, lastAt: 0 };
         const timers = [
             setTimeout(() => { setWeeklyReportStep(1); playSound('reportStep1'); }, 260),
@@ -2862,6 +3208,21 @@ function App() {
                 if (currentScore >= weeklyReportScoreTarget) clearInterval(scoreTimer);
             }, 34);
         }, 2140);
+        // 第 04 行对比胶囊：第 04 行出现时（3150ms）两边一起从 0 滚到实际值，每 34ms 一步、约 28 步，无音效（iOS RootView.swift:2220-2234）
+        const compareTarget = weeklyReport.comparisonCount;
+        let compareTimer;
+        const compareStartTimer = compareTarget ? setTimeout(() => {
+            let previous = 0;
+            let current = 0;
+            const previousStep = Math.max(1, Math.ceil(compareTarget.previous / 28));
+            const currentStep = Math.max(1, Math.ceil(compareTarget.current / 28));
+            compareTimer = setInterval(() => {
+                previous = Math.min(compareTarget.previous, previous + previousStep);
+                current = Math.min(compareTarget.current, current + currentStep);
+                setWeeklyReportCompare({ previous, current });
+                if (previous >= compareTarget.previous && current >= compareTarget.current) clearInterval(compareTimer);
+            }, 34);
+        }, 3150) : null;
 
         return () => {
             timers.forEach(timer => clearTimeout(timer));
@@ -2869,8 +3230,10 @@ function App() {
             if (countTimer) clearInterval(countTimer);
             clearTimeout(scoreStartTimer);
             if (scoreTimer) clearInterval(scoreTimer);
+            if (compareStartTimer) clearTimeout(compareStartTimer);
+            if (compareTimer) clearInterval(compareTimer);
         };
-    }, [view, weeklyReport.completedDays, weeklyReportScoreTarget, weeklyReportUnlocked]);
+    }, [view, weeklyReport.completedDays, weeklyReportScoreTarget, weeklyReportUnlocked, weeklyReport.comparisonCount?.previous, weeklyReport.comparisonCount?.current]);
 
     useEffect(() => {
         if (view !== 'home' || showUpdateNote || (!isMonday && !isWeeklyReportPromptPreview)) return;
@@ -4220,7 +4583,7 @@ function App() {
                                             <div className="min-w-0">
                                                 <div className="text-[10px] font-black brand-text opacity-75">{ui.dailyTitle}</div>
                                                 <div className="mt-1 text-2xl font-black leading-tight">{dailyTheme.title}</div>
-                                                <div className="mt-1 text-xs font-extrabold opacity-95 leading-relaxed">{dailyTheme.subtitle}</div>
+                                                <div className="mt-1 text-xs font-extrabold opacity-95 leading-relaxed">{getDailyHeroSubtitle(dailySpec, dailyTheme, isEnglish)}</div>
                                             </div>
                                             <div className="daily-hero-task-icon w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur">
                                                 <Icon name={TASK_DATA[dailySpec.task].icon} className="w-6 h-6" />
@@ -4239,11 +4602,8 @@ function App() {
                                                 <div className="min-w-0">
                                                     <div className="text-[10px] font-black text-emerald-600 brand-text">{ui.dailyToday}</div>
                                                     <div className="text-sm font-black text-slate-800 leading-tight">{getTaskTitle(dailySpec.task)}</div>
-                                                    <div className="text-[11px] font-extrabold text-slate-600 mt-1">{dailyTheme.goal || ui.dailyGoal}</div>
-                                                    <div className="daily-rule-row">
-                                                        <span><Icon name={dailySpec.completion === 'finish-grid' ? 'target' : 'timer'} className="w-3.5 h-3.5" />{dailyRuleLabel}</span>
-                                                        <span><Icon name="clock-3" className="w-3.5 h-3.5" />{dailyDurationLabel}</span>
-                                                    </div>
+                                                    {/* 与 iOS 一致：只写「变体 · N秒」，完整玩法交给开始前的规则卡 */}
+                                                    <div className="text-[11px] font-extrabold text-slate-600 mt-1">{getDailyTaskMetadata(dailySpec, isEnglish)}</div>
                                                 </div>
                                             </div>
                                             <div className={`daily-status-pill ${dailyRecord.completed ? 'is-complete' : ''}`}>
@@ -4290,10 +4650,10 @@ function App() {
                                                     <Icon name={dailyRecord.completed ? TASK_DATA[tomorrowSpec.task].icon : 'lock'} className="w-4 h-4" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <div className="text-[10px] font-black brand-text text-slate-400">{ui.dailyTomorrowPreview}</div>
+                                                    <div className="text-[10px] font-black brand-text text-slate-400">{dailyParityText.tomorrow}</div>
                                                     <div className="text-xs font-black text-slate-700 truncate">
                                                         {dailyRecord.completed
-                                                            ? `${ui.dailyTomorrowPrefix}: ${tomorrowCategory}`
+                                                            ? getTaskTitle(tomorrowSpec.task)
                                                             : ui.dailyTomorrowLocked}
                                                     </div>
                                                 </div>
@@ -4306,7 +4666,7 @@ function App() {
                                         <button
                                             className={`daily-start-button ${dailyRecord.completed ? 'is-secondary' : ''}`}
                                             type="button"
-                                            onClick={() => startChallenge(dailySpec.task)}
+                                            onClick={openDailyGate}
                                         >
                                             <Icon name={dailyRecord.completed ? 'rotate-cw' : 'play'} className="w-4 h-4" />
                                             {dailyRecord.completed ? ui.dailyReplay : ui.dailyStart}
@@ -4402,15 +4762,11 @@ function App() {
 
                         <div className="my-page-section-label">{isEnglish ? 'PREFERENCES' : '偏好设置'}</div>
 
-                        <div className="settings-page-card settings-page-group settings-preferences-group">
-                            <div className="settings-page-group-row settings-page-group-language">
-                                <div className="settings-page-row-head">
-                                    <div>
-                                        <div className="settings-page-card-title">{ui.settingsLanguage}</div>
-                                        <div className="settings-page-card-body">{settingsPageText.languageHint}</div>
-                                    </div>
-                                </div>
-                                <div className="settings-language-group is-page">
+                        {/* 偏好设置照 iOS 1.0.2（RootView.swift:801-986）：语言、新手教学、重新开启全部教学、外观、音效；都不带说明文字 */}
+                        <div className="parity-prefs">
+                            <div className="parity-prefs-row is-language">
+                                <div className="parity-prefs-title">{dailyParityText.language}</div>
+                                <div className="parity-language-control">
                                     {[
                                         { key: 'zh', label: '中文' },
                                         { key: 'en', label: 'EN' }
@@ -4419,7 +4775,7 @@ function App() {
                                             key={option.key}
                                             type="button"
                                             onClick={() => setLanguage(option.key)}
-                                            className={`settings-language-option ${lang === option.key ? 'is-active' : ''}`}
+                                            className={lang === option.key ? 'is-active' : ''}
                                             aria-pressed={lang === option.key}
                                         >
                                             {option.label}
@@ -4428,48 +4784,45 @@ function App() {
                                 </div>
                             </div>
 
-                            <div className="settings-page-group-divider" />
+                            <div className="parity-prefs-divider" />
 
-                            {/* 新手教学开关和「重新开启全部教学」，位置和文案照 iOS：语言之后、外观之前。 */}
-                            <div className="settings-page-group-row settings-page-row">
-                                <div className="settings-page-card-icon">
+                            <div className="parity-prefs-row">
+                                <div className="parity-prefs-icon is-accent">
                                     <Icon name="lightbulb" className="w-5 h-5" />
                                 </div>
-                                <div className="settings-page-card-copy">
-                                    <div className="settings-page-card-title">{isEnglish ? 'New Player Tutorials' : '新手教学'}</div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setTutorialModeEnabled(!tutorialModeEnabled)}
-                                    className={`settings-sound-toggle is-page ${tutorialModeEnabled ? 'is-active' : ''}`}
-                                    aria-pressed={tutorialModeEnabled}
-                                    aria-label={isEnglish ? 'New Player Tutorials' : '新手教学'}
-                                >
-                                    {tutorialModeEnabled ? ui.settingsSoundOn : ui.settingsSoundOff}
+                                <div className="parity-prefs-title">{dailyParityText.tutorials}</div>
+                                <ParitySwitch
+                                    checked={tutorialModeEnabled}
+                                    onChange={setTutorialModeEnabled}
+                                    label={dailyParityText.tutorials}
+                                />
+                            </div>
+
+                            <div className="parity-prefs-divider" />
+
+                            <div className="parity-prefs-replay-wrap">
+                                <button type="button" className="tutorial-replay-button parity-prefs-replay" onClick={replayAllTutorials}>
+                                    <Icon name="rotate-cw" className="w-[15px] h-[15px]" />
+                                    <span>{isEnglish ? 'Replay all tutorials' : '重新开启全部教学'}</span>
                                 </button>
                             </div>
-                            <button type="button" className="tutorial-replay-button" onClick={replayAllTutorials}>
-                                <Icon name="rotate-cw" className="w-[15px] h-[15px]" />
-                                <span>{isEnglish ? 'Replay all tutorials' : '重新开启全部教学'}</span>
-                            </button>
 
-                            <div className="settings-page-group-divider" />
+                            <div className="parity-prefs-divider" />
 
-                            <div className="settings-page-group-row settings-page-group-language">
-                                <div className="settings-page-row-head">
-                                    <div>
-                                        <div className="settings-page-card-title">{ui.settingsAppearance}</div>
-                                        <div className="settings-page-card-body">{settingsPageText.appearanceHint}</div>
-                                    </div>
+                            <div className="parity-prefs-row">
+                                <div className="parity-prefs-icon">
+                                    <Icon name="palette" className="w-5 h-5" />
                                 </div>
-                                <div className="settings-language-group is-page is-three">
+                                <div className="parity-prefs-title">{dailyParityText.appearance}</div>
+                                <div className="parity-segmented" role="radiogroup" aria-label={dailyParityText.appearance}>
                                     {APPEARANCE_OPTIONS.map(option => (
                                         <button
                                             key={option}
                                             type="button"
+                                            role="radio"
+                                            aria-checked={appearance === option}
                                             onClick={() => chooseAppearance(option)}
-                                            className={`settings-language-option ${appearance === option ? 'is-active' : ''}`}
-                                            aria-pressed={appearance === option}
+                                            className={appearance === option ? 'is-active' : ''}
                                         >
                                             {appearanceLabel(option)}
                                         </button>
@@ -4477,26 +4830,19 @@ function App() {
                                 </div>
                             </div>
 
-                            <div className="settings-page-group-divider" />
+                            <div className="parity-prefs-divider" />
 
-                            <div className="settings-page-group-row settings-page-row">
-                                <div className="settings-page-card-icon">
+                            <div className="parity-prefs-row">
+                                <div className="parity-prefs-icon">
                                     <Icon name={soundEnabled ? 'volume-2' : 'volume-x'} className="w-5 h-5" />
                                 </div>
-                                <div className="settings-page-card-copy">
-                                    <div className="settings-page-card-title">{ui.settingsSound}</div>
-                                    <div className="settings-page-card-body">{settingsPageText.soundHint}</div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={toggleSound}
-                                    className={`settings-sound-toggle is-page ${soundEnabled ? 'is-active' : ''}`}
-                                    aria-pressed={soundEnabled}
-                                >
-                                    {soundEnabled ? ui.settingsSoundOn : ui.settingsSoundOff}
-                                </button>
+                                <div className="parity-prefs-title">{dailyParityText.sound}</div>
+                                <ParitySwitch
+                                    checked={soundEnabled}
+                                    onChange={() => toggleSound()}
+                                    label={dailyParityText.sound}
+                                />
                             </div>
-
                         </div>
 
                     </div>
@@ -4526,7 +4872,7 @@ function App() {
                             <>
                         <div className="training-records-growth-card">
                             <div className="training-records-growth-mark">
-                                <Icon name="sparkles" className="w-4 h-4" />
+                                <Icon name="activity" className="w-4 h-4" />
                             </div>
                             <div className="training-records-growth-copy">
                                 <span>{isEnglish ? 'YOUR MOMENTUM' : '你的训练节奏'}</span>
@@ -4694,7 +5040,7 @@ function App() {
                             ))}
                         </div>
 
-                        <div className="training-records-metrics">
+                        <div className="training-records-metrics is-one-card">
                             <div className="training-records-metric">
                                 <span>{settingsPageText.recordsMinutes}</span>
                                 <strong>{trainingRecords.totalMinutes}</strong>
@@ -4722,7 +5068,7 @@ function App() {
                                             <div className="training-records-panel-kicker">{settingsPageText.recordsEffect}</div>
                                             <strong>{trainingRecords.accuracy}% {settingsPageText.recordsAccuracy}</strong>
                                         </div>
-                                        <Icon name="activity" className="w-4 h-4" />
+                                        <Icon name="trophy" className="w-4 h-4" />
                                     </div>
                                     <div className="training-records-bars">
                                         {trainingRecords.performanceBars.map(bar => (
@@ -4744,7 +5090,6 @@ function App() {
                                             <div className="training-records-panel-kicker">{settingsPageText.recordsTaskMix}</div>
                                             <p className="training-records-preference-copy">{trainingRecords.preferenceSummary}</p>
                                         </div>
-                                        <Icon name="layers-3" className="w-4 h-4" />
                                     </div>
                                     <div className="training-records-task-list">
                                         {trainingRecords.taskMix.length ? trainingRecords.taskMix.map(item => (
@@ -4763,7 +5108,6 @@ function App() {
                                             <div className="training-records-panel-kicker">{settingsPageText.recordsPerformance}</div>
                                             <strong>{isEnglish ? 'Different games, different strengths.' : '每个玩法，都有自己的进步方式。'}</strong>
                                         </div>
-                                        <Icon name="trophy" className="w-4 h-4" />
                                     </div>
                                     {trainingRecords.taskPerformance.length ? (
                                         <div className="training-records-performance-list">
@@ -5010,6 +5354,46 @@ function App() {
                 </div>
             )}
 
+            {/* 每日挑战开始前的规则卡（iOS DailyChallengeFlow.swift:17-182）。全屏一层盖住 tab 栏，点「开始挑战」才开局计时。 */}
+            {dailyGateOpen && (
+                <div className="daily-gate-screen" role="dialog" aria-modal="true" aria-label={isEnglish ? `${dailyTheme.title} daily challenge rules` : `${dailyTheme.title}每日挑战规则`}>
+                    <div className="daily-gate-card">
+                        <div className="daily-gate-icon">
+                            <Icon name={TASK_DATA[dailySpec.task]?.icon || 'calendar-check'} className="w-7 h-7" />
+                        </div>
+                        <h2 className="daily-gate-title">{dailyTheme.title}</h2>
+                        <div className="daily-gate-kicker">{dailyParityText.gateKicker}</div>
+                        <p className="daily-gate-rule">{getDailyGateRule(dailySpec, isEnglish)}</p>
+                        <div className="daily-gate-demo" role="img" aria-label={getDailyGateDemoLabel(dailySpec, isEnglish)}>
+                            <DailyGateDemo spec={dailySpec} isEnglish={isEnglish} />
+                        </div>
+                        <p className="daily-gate-tip">{dailyTheme.subtitle}</p>
+                        <button
+                            type="button"
+                            className="daily-gate-start"
+                            onClick={() => {
+                                setDailyGateOpen(false);
+                                startChallenge(dailySpec.task);
+                            }}
+                        >
+                            {dailyParityText.gateStart}
+                        </button>
+                        <button
+                            type="button"
+                            className="daily-gate-later"
+                            onClick={() => {
+                                playSound('tap');
+                                setDailyGateOpen(false);
+                                setMode('daily');
+                                setView('home');
+                            }}
+                        >
+                            {dailyParityText.gateLater}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {view === 'weekly-report' && (
                 <div className="weekly-report-screen app-content-screen overflow-y-auto no-scrollbar">
                     <div className="weekly-report-screen-inner">
@@ -5026,38 +5410,35 @@ function App() {
                         </button>
 
                         {!weeklyReportUnlocked ? (
-                            <div className="training-records-locked-state weekly-report-locked-state">
-                                <div className="training-records-locked-icon">
-                                    <Icon name="lock-keyhole" className="w-6 h-6" />
+                            <div className="weekly-lock">
+                                {/* 未解锁页照 iOS：本周完成 3 天每日挑战即解锁，只有这一档（RootView.swift:1938-1967） */}
+                                <div className="weekly-lock-icon">
+                                    <Icon name="calendar-check" className="w-6 h-6" />
                                 </div>
-                                <span className="training-records-locked-kicker">{weeklyReportText.lockKicker}</span>
-                                <h2>{weeklyReportLockIsFullStage ? weeklyReportText.lockTitleFull : weeklyReportText.lockTitleBasic}</h2>
-                                <p>{weeklyReportLockIsFullStage ? weeklyReportText.lockBodyFull : weeklyReportText.lockBodyBasic}</p>
-                                <div className="training-records-locked-progress">
-                                    <div className="training-records-locked-progress-head">
-                                        <span>{weeklyReportLockIsFullStage ? weeklyReportText.lockProgressLabelFull : weeklyReportText.lockProgressLabelBasic}</span>
-                                        <strong>{weeklyReportLockProgress} / {weeklyReportLockTarget}</strong>
+                                <span className="weekly-lock-kicker">{dailyParityText.lockKicker}</span>
+                                <h2>{dailyParityText.lockTitle}</h2>
+                                <p>{dailyParityText.lockBody}</p>
+                                <div className="weekly-lock-progress">
+                                    <div className="weekly-lock-progress-head">
+                                        <span>{dailyParityText.lockProgress}</span>
+                                        <strong>{Math.min(weeklyReport.completedDays, weeklyReportBasicUnlockDays)} / {weeklyReportBasicUnlockDays}</strong>
                                     </div>
-                                    <div className="training-records-locked-progress-track">
-                                        <span style={{ width: `${Math.min(100, (weeklyReportLockProgress / weeklyReportLockTarget) * 100)}%` }} />
+                                    <div className="weekly-lock-progress-track">
+                                        <span style={{ width: `${Math.min(100, (weeklyReport.completedDays / weeklyReportBasicUnlockDays) * 100)}%` }} />
                                     </div>
-                                    <small>
-                                        {weeklyReportLockIsFullStage
-                                            ? `${Math.max(0, weeklyReportLockTarget - weeklyReportLockProgress)} ${weeklyReportText.lockDaysLeftFull}`
-                                            : `${Math.max(0, weeklyReportLockTarget - weeklyReportLockProgress)} ${weeklyReportText.lockDaysLeftBasic}`}
-                                    </small>
+                                    <small>{dailyParityText.lockDaysLeft(Math.max(0, weeklyReportBasicUnlockDays - weeklyReport.completedDays))}</small>
                                 </div>
                                 <button
                                     type="button"
-                                    className="training-records-locked-cta"
+                                    className="weekly-lock-cta"
                                     onClick={() => {
-                                        playSound('daily');
+                                        playSound('tap');
                                         setMode('daily');
                                         setView('home');
                                     }}
                                 >
                                     <Icon name="calendar-check" className="w-4 h-4" />
-                                    {weeklyReportText.lockCta}
+                                    {dailyParityText.lockCta}
                                 </button>
                             </div>
                         ) : (
@@ -5077,16 +5458,17 @@ function App() {
                                         <strong>{weeklyReportCount}</strong>
                                         <span>{isEnglish ? 'days' : '天'}</span>
                                     </div>
-                                    <p>{weeklyReportText.reportDaysCopy}</p>
+                                    <p>{weeklyReport.daysCopy}</p>
                                 </div>
                             </div>
 
                             <div className={`weekly-report-reveal-row ${weeklyReportStep >= 2 ? 'is-visible' : ''}`}>
                                 <div className="weekly-report-reveal-index">02</div>
                                 <div className="weekly-report-reveal-copy">
-                                    <div className="weekly-report-reveal-label">{weeklyReportText.reportTaskLabel}</div>
-                                    <div className="weekly-report-reveal-value">{weeklyReport.topTaskName}</div>
-                                    <p>{weeklyReportText.reportTaskCopy}</p>
+                                    {/* 两周都玩过且有提升的游戏里取进步最大的；没有时仍是「最常练习」 */}
+                                    <div className="weekly-report-reveal-label">{weeklyReport.mostImproved ? dailyParityText.mostImproved : weeklyReportText.reportTaskLabel}</div>
+                                    <div className="weekly-report-reveal-value">{weeklyReport.mostImproved ? getTaskTitle(weeklyReport.mostImproved.task) : weeklyReport.topTaskName}</div>
+                                    <p>{weeklyReport.mostImprovedCopy || weeklyReportText.reportTaskCopy}</p>
                                 </div>
                             </div>
 
@@ -5098,7 +5480,7 @@ function App() {
                                         <strong>{weeklyReportScore}</strong>
                                         <span>{isEnglish ? 'points' : '分'}</span>
                                     </div>
-                                    <p>{weeklyReportText.reportBestCopy}</p>
+                                    <p>{weeklyReport.bestCopy}</p>
                                 </div>
                             </div>
 
@@ -5108,9 +5490,10 @@ function App() {
                                     <div className="weekly-report-reveal-label">{weeklyReportText.reportCompareLabel}</div>
                                     <div className="weekly-report-compare-value">{weeklyReport.comparison}</div>
                                     <div className="weekly-report-compare-strip">
-                                        <span>{weeklyReportPreviousBarLabel} {weeklyReport.previousFastestSchulte ? formatWeeklySeconds(weeklyReport.previousFastestSchulte, isEnglish) : (weeklyReport.previousBestScore || '-')}</span>
+                                        {/* 两周数值可比时，与 iOS 一样从 0 滚到实际值 */}
+                                        <span>{weeklyReportPreviousBarLabel} {weeklyReport.comparisonCount ? `${weeklyReportCompare.previous}${weeklyReportCompareSuffix}` : (weeklyReport.previousFastestSchulte ? formatWeeklySeconds(weeklyReport.previousFastestSchulte, isEnglish) : (weeklyReport.previousBestScore || '-'))}</span>
                                         <Icon name="arrow-right" className="w-4 h-4" />
-                                        <span>{weeklyReportCurrentBarLabel} {weeklyReport.fastestSchulte ? formatWeeklySeconds(weeklyReport.fastestSchulte, isEnglish) : (weeklyReport.bestScore || '-')}</span>
+                                        <span>{weeklyReportCurrentBarLabel} {weeklyReport.comparisonCount ? `${weeklyReportCompare.current}${weeklyReportCompareSuffix}` : (weeklyReport.fastestSchulte ? formatWeeklySeconds(weeklyReport.fastestSchulte, isEnglish) : (weeklyReport.bestScore || '-'))}</span>
                                     </div>
                                     <p>{weeklyReportText.reportCompareCopy}</p>
                                 </div>
@@ -5119,7 +5502,7 @@ function App() {
 
                             <div className={`weekly-report-final ${weeklyReportStep >= 5 ? 'is-visible' : ''}`}>
                                 <h2>{weeklyReportText.reportReady}</h2>
-                                <p>{weeklyReportText.reportReadyCopy}</p>
+                                <p>{weeklyReport.advice}</p>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -5932,7 +6315,8 @@ function App() {
                 return (
                     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-pop-center">
                         <div className={`result-icon-orb ${resultPresentation.className}`}>
-                            <Icon name={resultPresentation.icon} className="w-10 h-10" />
+                            {/* 每日结算用 iOS 的绿色勾；其他结算图标不变 */}
+                            {isDailyResult ? <DailyResultMark /> : <Icon name={resultPresentation.icon} className="w-10 h-10" />}
                         </div>
                         <div className="text-[10px] font-black brand-text text-slate-400 mb-1">{isDailyResult ? ui.dailyFinishedTitle : ui.resultTitle}</div>
                         <div className={`result-score-counter text-6xl font-black mb-6 font-mono ${isDailyResult ? 'text-emerald-500' : 'text-indigo-600'}`}>{animatedScore}</div>
@@ -5994,21 +6378,21 @@ function App() {
                                 </div>
                                 <div className="daily-result-row">
                                     <span>{ui.dailyTomorrowPreview}</span>
-                                    <strong>{tomorrowCategory}</strong>
+                                    <strong>{tomorrowTheme.title}</strong>
                                 </div>
                             </div>
                         )}
                         {isDailyResult && (
-                            <div className="daily-result-note">
-                                <Icon name="sparkles" className="w-4 h-4" />
-                                <span>{ui.dailyResultNote}</span>
+                            <div className="daily-result-note is-parity">
+                                <span>{dailyParityText.resultNote}</span>
                             </div>
                         )}
                         {!isDailyResult && <div className="mb-8" />}
                         {isDailyResult ? (
                             <div className="w-full max-w-sm flex flex-col gap-3">
                                 <button onClick={() => { playSound('tap'); setMode('daily'); setView('home'); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.dailySeeTomorrow}</button>
-                                <button onClick={() => { playSound('tap'); startChallenge(dailySpec.task); }} className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black">{ui.dailyPracticeAgain}</button>
+                                {/* 与 iOS 一致：再冲一次先回到开始前的规则卡 */}
+                                <button onClick={() => setDailyGateOpen(true)} className="w-full py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black">{ui.dailyPracticeAgain}</button>
                             </div>
                         ) : (
                             <button onClick={() => { playSound('tap'); setView('home'); }} className="w-full max-w-sm py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg">{ui.backHome}</button>
